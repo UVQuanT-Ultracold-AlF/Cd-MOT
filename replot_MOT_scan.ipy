@@ -1,0 +1,57 @@
+to_be_plotted = None
+
+for i, cap_data in MOT_capture_data.items():
+    if (i in [111,113]):
+        continue
+    if to_be_plotted is None:
+        to_be_plotted = abundance_data[i]*to_captured(cap_data)
+        continue
+    to_be_plotted += abundance_data[i]*to_captured(cap_data)
+    
+fig, ax = plt.subplots(1,1,figsize=[20,12])
+ax.plot(MOT_range*hertz_unit/1e6, to_be_plotted, label = "With slower")
+
+to_be_plotted = None
+
+for i, cap_data in MOT_capture_data_wo_slower.items():
+    if (i in [111,113]):
+        continue
+    if to_be_plotted is None:
+        to_be_plotted = abundance_data[i]*capture_cdf(np.array(cap_data))
+        continue
+    to_be_plotted += abundance_data[i]*capture_cdf(np.array(cap_data))
+
+ax.plot(MOT_range*hertz_unit/1e6, to_be_plotted, label = "Without slower")
+ax.set_xlabel("MOT detuning - $\\nu_{114}$ [MHz]")
+ax.set_ylabel("MOT signal [a.u.]")
+ax.legend()
+ax.grid()
+ax.xaxis.set_minor_locator(MultipleLocator(100))
+
+plt.show()
+
+w_slower = None
+wo_slower = None
+
+for (i, cap_data), (j, cap_data_wo_slower) in zip(MOT_capture_data.items(), MOT_capture_data_wo_slower.items()):
+    if w_slower is None:
+        w_slower = abundance_data[i]*to_captured(cap_data)
+        wo_slower = abundance_data[i]*capture_cdf(np.array(cap_data_wo_slower))
+        continue
+    w_slower += abundance_data[i]*to_captured(cap_data)
+    wo_slower += abundance_data[i]*capture_cdf(np.array(cap_data_wo_slower))
+
+epsilon = 1e-4
+    
+to_be_plotted = w_slower + epsilon
+to_be_plotted/=wo_slower + epsilon
+# to_be_plotted[wo_slower<=epsilon] =0
+
+fig, ax = plt.subplots(1,1,figsize=[20,12])
+ax.plot(MOT_range*hertz_unit/1e6, to_be_plotted)
+ax.set_xlabel("MOT detuning - $\\nu_{114}$ [MHz]")
+ax.set_ylabel("Ratio")
+ax.grid()
+ax.xaxis.set_minor_locator(MultipleLocator(100))
+
+plt.show()
