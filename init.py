@@ -169,11 +169,14 @@ def MOT_Beams_infinite(det_MOT, *args):
 permMagnets=mi('./csv/2D_Br.csv', './csv/2D_Bz.csv',91,-1)
 permMagnetsPylcp = pylcp.magField(permMagnets.fieldCartesian)
 
+# def captured_condition(t, y):
+#     return (y[-6]**2 + y[-3]**2) - 1e-2
+
 def captured_condition(t, y):
-    return (y[-6]**2 + y[-3]**2) - 1e-2
+    return sum(map(lambda x : x**2, y[-6:])) - 1e-2
 
 def lost_condition(t, y):
-    return y[-3]-2
+    return y[-3]-8
 
 def backwards_lost(t, y):
     return y[-3] + 12
@@ -193,15 +196,15 @@ def captureVelocityForEq(det_MOT, det_slower, ham, lasers = MOT_and_Slow_Beams):
 
 def isCaptured(sol):
     captured = -1
-    finalPosition = np.array([sol.r[i][-1] for i in range(1)])
-    finalVelocity = np.array([sol.v[i][-1] for i in range(1)])  # Fix capture cond
+    finalPosition = np.array([sol.r[i][-1] for i in range(3)])
+    finalVelocity = np.array([sol.v[i][-1] for i in range(3)])  # Fix capture cond
     if (np.linalg.norm(finalPosition)**2 + np.linalg.norm(finalVelocity)**2 <1.1e-2):
         #print('initial velocity: '+ str(sol.v[0][0]) +' captured')
         captured = 1 
     return captured
 
-def atomTrajectoryToMOT(v0, r0, eqn, tmax=10, max_step=1, **kwargs):
-    eqn.set_initial_position_and_velocity(r0, np.array([v0,0,0]))
+def atomTrajectoryToMOT(v0, r0, eqn, angle = 0, tmax=10, max_step=1):
+    eqn.set_initial_position_and_velocity(r0, np.array([v0*np.cos(angle),v0*np.sin(angle),0]))
     eqn.evolve_motion([0., 10], events=[captured_condition,lost_condition,backwards_lost],
                       max_step=max_step)
 
@@ -215,26 +218,26 @@ def findCaptureVelocity(r0,eqn):
        xtol=1e-3, rtol=1e-3, full_output=False)
 
 
-def captureVelocityForEq_ranged(det_MOT, det_slower, ham, lasers = MOT_and_Slow_Beams, intervals = [0, 100/velocity_unit, 150/velocity_unit, 300/velocity_unit]):
+def captureVelocityForEq_ranged(det_MOT, det_slower, ham, lasers = MOT_and_Slow_Beams, intervals = [0, 100/velocity_unit, 150/velocity_unit, 300/velocity_unit], angle = 0):
     print (f"{det_MOT*hertz_unit/1e6:.2f} {det_slower*hertz_unit/1e6:.2f}", end = '                                                                            \r')
     eq = pylcp.rateeq(lasers(det_MOT, det_slower),permMagnetsPylcp, ham,include_mag_forces=False)
     try:
         eq.set_initial_pop(np.array([1., 0., 0., 0.]))
     except ValueError: # Quick and dirty solution to detect the two fermionic hamiltonians
         eq.set_initial_pop(np.array([0.5, 0.5, 0., 0., 0., 0., 0., 0.]))
-    return findCaptureVelocityRange(np.array([-10,0,0]), eq, intervals)
+    return findCaptureVelocityRange(np.array([-10,0,0]), eq, intervals, angle = angle)
 
-def findCaptureVelocityRange(r0, eqn, intervals = [0, 100/velocity_unit, 150/velocity_unit, 300/velocity_unit]):
+def findCaptureVelocityRange(r0, eqn, intervals = [0, 100/velocity_unit, 150/velocity_unit, 300/velocity_unit],angle = 0):
     signs = []
     roots = []
     signs.append(0 if atomTrajectoryToMOT(intervals[0], r0, eqn, tmax=10, max_step=1) < 1 else 1)
     for xlow, xhigh in zip(intervals[:-1], intervals[1:]):
-        xhigh_sign = 0 if atomTrajectoryToMOT(xhigh, r0, eqn, tmax=10, max_step=1) < 1 else 1
+        xhigh_sign = 0 if atomTrajectoryToMOT(xhigh, r0, eqn, angle = angle, tmax=10, max_step=1) < 1 else 1
         if (signs[-1] == xhigh_sign):
             continue
         signs.append(xhigh_sign)
         roots.append(bisect(atomTrajectoryToMOT,xlow, xhigh,
-                       args=(r0, eqn),
+                       args=(r0, eqn, angle),
                        xtol=1/velocity_unit, rtol=1e-3, full_output=False))
     if (roots == []):
         return ([0],[0])
@@ -248,6 +251,7 @@ std = 10/velocity_unit
 capture_cdf = lambda x : norm.cdf(x, mean, std)
 
 def convert_to_captured(roots, signs):
+    global capture_cdf
     captured_percentage = 0
     for root_low, root_high, sign in zip(roots[:-1], roots[1:],signs[1:-1]):
         captured_percentage += sign*(capture_cdf (root_high) - capture_cdf (root_low))

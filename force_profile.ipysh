@@ -1,0 +1,35 @@
+from init import *
+from sys import argv
+
+sys_args = argv[1:]
+MOT_det = int(sys_args[0])
+slow_det = int(sys_args[1])
+
+rateeq = pylcp.rateeq(MOT_and_Slow_Beams(MOT_det*1e6/hertz_unit,slow_det*1e6/hertz_unit), permMagnetsPylcp, Hamiltonians[114] ,include_mag_forces=False)
+
+r = np.linspace(-10/cm_unit, 10/cm_unit, 200)
+v = np.linspace(-300/velocity_unit, 300/velocity_unit, 200)
+
+R, V = np.meshgrid(r, v)
+rateeq.generate_force_profile([R, np.zeros(R.shape), np.zeros(R.shape)],
+                           [V, np.zeros(V.shape), np.zeros(V.shape)],
+                           name='Frad', progress_bar=True)
+
+angle = float(sys_args[3])
+vel = float(sys_args[2])
+
+rateeq.set_initial_position_and_velocity(np.array([-8/cm_unit, 0., 0.]),np.array([vel*np.cos(np.radians(angle))/velocity_unit, vel*np.sin(np.radians(angle))/velocity_unit, 0.]))
+rateeq.set_initial_pop(np.array([1., 0., 0., 0.]))
+rateeq.evolve_motion([0., 5e-2/time_unit], events=[captured_condition, lost_condition, backwards_lost], progress_bar=True, max_step = 1)
+sol = rateeq.sol
+
+fig, ax = plt.subplots(1, 1)
+ax.plot(sol.r[0],sol.v[0]*velocity_unit,'b-')
+colormesh = ax.pcolormesh(R, V*velocity_unit, rateeq.profile['Frad'].F[0], cmap = 'viridis')
+cb1 = plt.colorbar(colormesh)
+cb1.set_label('$f(\hbar k \Gamma)$')
+ax.set_xlabel('$x$ (cm)')
+ax.set_ylabel('$v(m/s)$')
+fig.subplots_adjust(left=0.12,right=0.9)
+ax.set_xlim([-10,10])
+ax.set_ylim([-300,300])
