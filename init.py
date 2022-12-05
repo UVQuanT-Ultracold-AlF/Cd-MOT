@@ -49,7 +49,8 @@ hbar = consts.hbar
 h = consts.h
 
 hertz_unit = 91e6
-time_unit = 1/hertz_unit
+# time_unit = 1/hertz_unit
+time_unit = k*1e-2/hertz_unit # Needed due to the two ways units are measured
 
 amu_const = consts.value('atomic mass constant')
 
@@ -113,7 +114,7 @@ for key in mass.keys():
 
 
 # Laser fields
-def MOT_and_Slow_Beams(det_MOT, det_slower):
+def MOT_and_Slow_Beams(det_MOT, det_slower, *args):
     return pylcp.laserBeams([
         {'kvec':np.array([-1/np.sqrt(2), -1/np.sqrt(2), 0.]), 'pol':-1, 'delta':det_MOT, 's':MOT_s,'wb':MOT_beam_width},
         {'kvec':np.array([1/np.sqrt(2), 1/np.sqrt(2), 0.]), 'pol':-1, 'delta':det_MOT, 's':MOT_s,'wb':MOT_beam_width},
@@ -124,7 +125,18 @@ def MOT_and_Slow_Beams(det_MOT, det_slower):
         {'kvec':np.array([-1, 0., 0.]), 'pol':-1, 'delta':det_slower, 's':slower_s,'wb':slower_beam_width}
     ], beam_type=pylcp.gaussianBeam)
 
-def MOT_and_Slow_Beams_sig_2(det_MOT, det_slower):
+def MOT_and_Slow_Beams_timed(det_MOT, det_slower, t_cutoff, *args):
+    return pylcp.laserBeams([
+        {'kvec':np.array([-1/np.sqrt(2), -1/np.sqrt(2), 0.]), 'pol':-1, 'delta':det_MOT, 's':MOT_s,'wb':MOT_beam_width},
+        {'kvec':np.array([1/np.sqrt(2), 1/np.sqrt(2), 0.]), 'pol':-1, 'delta':det_MOT, 's':MOT_s,'wb':MOT_beam_width},
+        {'kvec':np.array([1/np.sqrt(2), -1/np.sqrt(2), 0.]), 'pol':-1, 'delta':det_MOT, 's':MOT_s,'wb':MOT_beam_width},
+        {'kvec':np.array([-1/np.sqrt(2), 1/np.sqrt(2), 0.]), 'pol':-1, 'delta':det_MOT, 's':MOT_s,'wb':MOT_beam_width},
+        {'kvec':np.array([0., 0.,  1.]), 'pol':+1, 'delta':det_MOT, 's':MOT_s,'wb':MOT_beam_width},
+        {'kvec':np.array([0., 0., -1.]), 'pol':+1, 'delta':det_MOT, 's':MOT_s,'wb':MOT_beam_width},
+        {'kvec':np.array([-1, 0., 0.]), 'pol':-1, 'delta':det_slower, 's': lambda t : slower_s if t < t_cutoff else 0,'wb':slower_beam_width}
+    ], beam_type=pylcp.gaussianBeam)
+
+def MOT_and_Slow_Beams_sig_2(det_MOT, det_slower, *args):
     return pylcp.laserBeams([
         {'kvec':np.array([-1/np.sqrt(2), -1/np.sqrt(2), 0.]), 'pol':-1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
         {'kvec':np.array([1/np.sqrt(2), 1/np.sqrt(2), 0.]), 'pol':-1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
@@ -135,7 +147,7 @@ def MOT_and_Slow_Beams_sig_2(det_MOT, det_slower):
         {'kvec':np.array([-1, 0., 0.]), 'pol':+1, 'delta':0*slower_detuning + det_slower, 's':slower_s,'wb':slower_beam_width}
     ], beam_type=pylcp.gaussianBeam)
 
-def MOT_and_Slow_Beams_lin(det_MOT, det_slower):
+def MOT_and_Slow_Beams_lin(det_MOT, det_slower, *args):
     return pylcp.laserBeams([
         {'kvec':np.array([-1/np.sqrt(2), -1/np.sqrt(2), 0.]), 'pol':-1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
         {'kvec':np.array([1/np.sqrt(2), 1/np.sqrt(2), 0.]), 'pol':-1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
@@ -218,9 +230,9 @@ def findCaptureVelocity(r0,eqn):
        xtol=1e-3, rtol=1e-3, full_output=False)
 
 
-def captureVelocityForEq_ranged(det_MOT, det_slower, ham, lasers = MOT_and_Slow_Beams, intervals = [0, 100/velocity_unit, 150/velocity_unit, 300/velocity_unit], angle = 0):
+def captureVelocityForEq_ranged(det_MOT, det_slower, ham, *args, lasers = MOT_and_Slow_Beams, intervals = [0, 100/velocity_unit, 150/velocity_unit, 300/velocity_unit], angle = 0, **kwargs):
     print (f"{det_MOT*hertz_unit/1e6:.2f} {det_slower*hertz_unit/1e6:.2f}", end = '                                                                            \r')
-    eq = pylcp.rateeq(lasers(det_MOT, det_slower),permMagnetsPylcp, ham,include_mag_forces=False)
+    eq = pylcp.rateeq(lasers(det_MOT, det_slower,*args,**kwargs),permMagnetsPylcp, ham,include_mag_forces=False)
     try:
         eq.set_initial_pop(np.array([1., 0., 0., 0.]))
     except ValueError: # Quick and dirty solution to detect the two fermionic hamiltonians

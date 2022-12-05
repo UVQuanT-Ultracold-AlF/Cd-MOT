@@ -1,0 +1,3 @@
+[submodule "pylcp"]
+	path = pylcp
+	url = git@github.com:UVQuanT-Ultracold-AlF/pylcp.git
