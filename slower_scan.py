@@ -6,7 +6,7 @@ slower_range = np.linspace(-1700e6/hertz_unit, 1700e6/hertz_unit,51)
 slower_capture_data = {}
 time_range = 0.5e-3/time_unit
 
-def MOT_and_Slow_Beams_timed(det_MOT, det_slower, t_cutoff, *args):
+def MOT_and_Slow_Beams_timed2(det_MOT, det_slower, *args):
     return pylcp.laserBeams([
         {'kvec':np.array([-1/np.sqrt(2), -1/np.sqrt(2), 0.]), 'pol':-1, 'delta':det_MOT, 's':MOT_s,'wb':MOT_beam_width},
         {'kvec':np.array([1/np.sqrt(2), 1/np.sqrt(2), 0.]), 'pol':-1, 'delta':det_MOT, 's':MOT_s,'wb':MOT_beam_width},
@@ -17,7 +17,7 @@ def MOT_and_Slow_Beams_timed(det_MOT, det_slower, t_cutoff, *args):
         {'kvec':np.array([-1, 0., 0.]), 'pol':-1, 'delta':det_slower, 's': lambda t : slower_s if t < time_range else 0,'wb':slower_beam_width}
     ], beam_type=pylcp.gaussianBeam)
 
-def MOT_and_Slow_Beams_sig_2(det_MOT, det_slower, *args):
+def MOT_and_Slow_Beams_sig_2_timed(det_MOT, det_slower, *args):
     return pylcp.laserBeams([
         {'kvec':np.array([-1/np.sqrt(2), -1/np.sqrt(2), 0.]), 'pol':-1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
         {'kvec':np.array([1/np.sqrt(2), 1/np.sqrt(2), 0.]), 'pol':-1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
@@ -28,7 +28,7 @@ def MOT_and_Slow_Beams_sig_2(det_MOT, det_slower, *args):
         {'kvec':np.array([-1, 0., 0.]), 'pol':+1, 'delta':0*slower_detuning + det_slower, 's': lambda t : slower_s if t < time_range else 0,'wb':slower_beam_width}
     ], beam_type=pylcp.gaussianBeam)
 
-def MOT_and_Slow_Beams_lin(det_MOT, det_slower, *args):
+def MOT_and_Slow_Beams_lin_timed(det_MOT, det_slower, *args):
     return pylcp.laserBeams([
         {'kvec':np.array([-1/np.sqrt(2), -1/np.sqrt(2), 0.]), 'pol':-1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
         {'kvec':np.array([1/np.sqrt(2), 1/np.sqrt(2), 0.]), 'pol':-1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
@@ -39,7 +39,7 @@ def MOT_and_Slow_Beams_lin(det_MOT, det_slower, *args):
         {'kvec':np.array([-1, 0., 0.]), 'pol':np.array([0., 1., 0.]), 'pol_coord':'cartesian', 'delta':0*slower_detuning + det_slower, 's': lambda t : slower_s if t < time_range else 0,'wb':slower_beam_width}
     ], beam_type=pylcp.gaussianBeam)
 
-beams = [MOT_and_Slow_Beams, MOT_and_Slow_Beams_sig_2, MOT_and_Slow_Beams_lin]
+beams = [MOT_and_Slow_Beams_timed2, MOT_and_Slow_Beams_sig_2_timed, MOT_and_Slow_Beams_lin_timed]
 relevant_isotopes = [114, 116, 113]
 
 def run_beam(beam):
