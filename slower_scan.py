@@ -1,10 +1,25 @@
 from init import * # Run everything in init.py
 
 MOT_range = np.linspace(-1700e6/hertz_unit, 1700e6/hertz_unit,51)
-slower_range = np.linspace(-1700e6/hertz_unit, 1700e6/hertz_unit,51)
+slower_range = np.linspace(-1200e6/hertz_unit, 0e6/hertz_unit,51)
 
 slower_capture_data = {}
 time_range = 0.5e-3/time_unit
+
+mean = 170/velocity_unit
+std = 10/velocity_unit
+
+capture_cdf = lambda x : norm.cdf(x, mean, std)
+
+def convert_to_captured(roots, signs):
+    global capture_cdf
+    captured_percentage = 0
+    for root_low, root_high, sign in zip(roots[:-1], roots[1:],signs[1:-1]):
+        captured_percentage += sign*(capture_cdf (root_high) - capture_cdf (root_low))
+    return captured_percentage
+
+to_captured = lambda arr : np.array([convert_to_captured(*x) for x in arr])
+to_captured_2D = lambda arr : np.array([[convert_to_captured(*x) for x in y] for y in arr]) # Write a more general solution
 
 def MOT_and_Slow_Beams_timed2(det_MOT, det_slower, *args):
     return pylcp.laserBeams([
@@ -40,16 +55,17 @@ def MOT_and_Slow_Beams_lin_timed(det_MOT, det_slower, *args):
     ], beam_type=pylcp.gaussianBeam)
 
 beams = [MOT_and_Slow_Beams_timed2, MOT_and_Slow_Beams_sig_2_timed, MOT_and_Slow_Beams_lin_timed]
-relevant_isotopes = [114, 116, 113]
+relevant_isotopes = [114]#, 116, 113]
 
 def run_beam(beam):
     ret = {}
     for h in relevant_isotopes:
         print(f"\n{h}:")
-        ret[h] = [captureVelocityForEq_ranged(MOT_detuning, dSlower, Hamiltonians[h],lasers=beam) for dSlower in slower_range]
+        ret[h] = [captureVelocityForEq_ranged(-175e6/hertz_unit, dSlower, Hamiltonians[h],lasers=beam) for dSlower in slower_range]
     return beam, ret
 
 if __name__ == "__main__":
+    __spec__ = None # This is needed due to an ipython bug on windows
     import multiprocessing as mp
     with mp.Pool(processes = 8) as pool:
         cdata = pool.map(run_beam,beams)

@@ -261,6 +261,7 @@ mean = 150/velocity_unit
 std = 10/velocity_unit
 
 capture_cdf = lambda x : norm.cdf(x, mean, std)
+capture_pdf = lambda x : norm.pdf(x, mean, std)
 
 def convert_to_captured(roots, signs):
     global capture_cdf
@@ -271,3 +272,4 @@ def convert_to_captured(roots, signs):
 
 to_captured = lambda arr : np.array([convert_to_captured(*x) for x in arr])
 to_captured_2D = lambda arr : np.array([[convert_to_captured(*x) for x in y] for y in arr]) # Write a more general solution
+to_captured_ND = lambda arr : np.array([convert_to_captured(*x) if isinstance(x, tuple) else to_captured_ND(x) for x in arr])

@@ -1,7 +1,7 @@
 from init import * # Run everything in init.py
 
-MOT_range = np.arange(isotope_shifts[113]-550e6/hertz_unit, isotope_shifts[113]+50e6/hertz_unit,float(25e6/hertz_unit))
-slower_range = np.arange(isotope_shifts[113]-1200e6/hertz_unit, isotope_shifts[113]+500e6/hertz_unit,float(100e6/hertz_unit))
+MOT_range = np.arange(isotope_shifts[113]-550e6/hertz_unit, isotope_shifts[113]+50e6/hertz_unit,float(5e6/hertz_unit))
+slower_range = np.arange(isotope_shifts[113]-1200e6/hertz_unit, isotope_shifts[113]+500e6/hertz_unit,float(50e6/hertz_unit))
 # MOT_range = np.arange(-100e6/hertz_unit, 200e6/hertz_unit + 10e6/hertz_unit,10e6/hertz_unit)
 # slower_range = np.arange(-1000e6/hertz_unit, 500e6/hertz_unit + 100e6/hertz_unit,100e6/hertz_unit)
 angle_range = np.linspace(0.,np.pi/16, 8)
