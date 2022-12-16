@@ -133,7 +133,7 @@ def MOT_and_Slow_Beams_timed(det_MOT, det_slower, t_cutoff, *args):
         {'kvec':np.array([-1/np.sqrt(2), 1/np.sqrt(2), 0.]), 'pol':-1, 'delta':det_MOT, 's':MOT_s,'wb':MOT_beam_width},
         {'kvec':np.array([0., 0.,  1.]), 'pol':+1, 'delta':det_MOT, 's':MOT_s,'wb':MOT_beam_width},
         {'kvec':np.array([0., 0., -1.]), 'pol':+1, 'delta':det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([-1, 0., 0.]), 'pol':-1, 'delta':det_slower, 's': lambda t : slower_s if t < t_cutoff else 0,'wb':slower_beam_width}
+        {'kvec':np.array([-1, 0., 0.]), 'pol':-1, 'delta':det_slower, 's': lambda t : slower_s if 0 > t - t_cutoff and t-t_cutoff > -0.5e-3/time_unit else 0,'wb':slower_beam_width}
     ], beam_type=pylcp.gaussianBeam)
 
 def MOT_and_Slow_Beams_sig_2(det_MOT, det_slower, *args):
@@ -188,10 +188,10 @@ def captured_condition(t, y):
     return sum(map(lambda x : x**2, y[-6:])) - 1e-2
 
 def lost_condition(t, y):
-    return y[-3]-8
+    return y[-3]- 8
 
 def backwards_lost(t, y):
-    return y[-3] + 12
+    return y[-3] + 50
 
 captured_condition.terminal = True
 lost_condition.terminal = True
@@ -237,7 +237,7 @@ def captureVelocityForEq_ranged(det_MOT, det_slower, ham, *args, lasers = MOT_an
         eq.set_initial_pop(np.array([1., 0., 0., 0.]))
     except ValueError: # Quick and dirty solution to detect the two fermionic hamiltonians
         eq.set_initial_pop(np.array([0.5, 0.5, 0., 0., 0., 0., 0., 0.]))
-    return findCaptureVelocityRange(np.array([-10,0,0]), eq, intervals, angle = angle)
+    return findCaptureVelocityRange(np.array([-45.5,0,0]), eq, intervals, angle = angle)
 
 def findCaptureVelocityRange(r0, eqn, intervals = [0, 100/velocity_unit, 150/velocity_unit, 300/velocity_unit],angle = 0):
     signs = []

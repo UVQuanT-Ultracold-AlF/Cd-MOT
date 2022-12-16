@@ -4,9 +4,9 @@ MOT_range = np.linspace(-750e6/hertz_unit, 2100e6/hertz_unit,401)
 
 slower_det = -175e6/hertz_unit
 
-time_cutoff = 0.35e-3/time_unit
+time_cutoff = 3.1e-3/time_unit
 
-mean = 180/velocity_unit
+mean = 150/velocity_unit
 std = 10/velocity_unit
 
 capture_cdf = lambda x : norm.cdf(x, mean, std)
