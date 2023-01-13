@@ -1,17 +1,46 @@
 from init import *
 import random as rand
+from multiprocessing import Pool, Value
+import cProfile
+import functools as ft
+import matplotlib.gridspec as gridspec
 
-def rej_samp(func = lambda _ : 1, rand_x = lambda : rand.uniform(0,1), rand_y = lambda : 0):
+gt = lambda x, y : ft.reduce(lambda a, b : a and b, [i >= j for i,j in zip(x,y)])
+
+def rej_samp(func = lambda _ : 1, rand_x = lambda : rand.uniform(0,1), rand_y = lambda : 0, comp_func = lambda x, y : x >= y):
     while True:
         x, y = rand_x(), rand_y()
         # print (x, y, func(x))
-        if (func(x) >= y):
+        if (comp_func(func(x), y)):
             yield x
 
-rej_samp_isotope = rej_samp(func = lambda x : abundance_data[x], rand_x = rand.randint(106,116), rand_y = lambda : rand.uniform(0,1))
-rej_samp_vel = rej_samp(func = lambda x : capture_pdf(x), rand_x = lambda : rand.uniform(100/velocity_unit,200/velocity_unit), rand_y = lambda : rand.uniform(0,1))
-rej_samp_angle = rej_samp(rand_x = lambda : rand.uniform(10e-3,10e-3))
-rej_samp_time = rej_samp(rand_x = lambda : rand.uniform(0,1e-3/time_unit))
+def fake_samp(val):
+    while True:
+        yield val
+        
+def cdf_samp(cdf, valrange, randrange = None):
+    if randrange is None:
+        randrange = [cdf(valrange[0]), cdf(valrange[1])]
+    while True:
+        rand_prop = rand.uniform(*randrange)
+        yield bisect(lambda x : cdf(x) - rand_prop,*valrange, xtol = 1e-2/velocity_unit)
+        
+abundance_data[107] = 0
+abundance_data[109] = 0
+abundance_data[115] = 0
+
+# std of 34 corresponds to FWHM of ~80
+transverse_pdf = lambda x : norm.pdf(x, 0/velocity_unit, 34/velocity_unit)
+transverse_cdf = lambda x : norm.cdf(x, 0/velocity_unit, 34/velocity_unit)
+transverse_cutoff = np.tan(35e-3)*200/velocity_unit
+
+rej_samp_isotope = fake_samp(114) # rej_samp(func = lambda x : abundance_data[x], rand_x = lambda : rand.randint(106,116), rand_y = lambda : rand.uniform(0,0.2873))
+# rej_samp_vel = rej_samp(func = lambda x : capture_pdf(x[0]), rand_x = lambda : [rand.uniform(100/velocity_unit,200/velocity_unit), 0, 0], rand_y = lambda : rand.uniform(0,capture_pdf(mean)))
+rej_samp_v0 = cdf_samp(capture_cdf, [0,300/velocity_unit]) # rej_samp(func = lambda x : capture_pdf(x), rand_x = lambda : rand.uniform(100/velocity_unit,200/velocity_unit), rand_y = lambda : rand.uniform(0,capture_pdf(mean)))
+rej_samp_vt = cdf_samp(transverse_cdf, [-transverse_cutoff, transverse_cutoff]) # rej_samp(func = lambda x : transverse_pdf(abs(x)), rand_x = lambda : rand.uniform(-transverse_cutoff,transverse_cutoff), rand_y = lambda : rand.uniform(0,transverse_pdf(transverse_cutoff)))
+rej_samp_vel = rej_samp(func = lambda x : x, rand_x = lambda : [next(rej_samp_v0), next(rej_samp_vt), 0], rand_y = lambda : 0, comp_func = lambda x ,y : abs(np.arctan(x[1]/x[0])) < 75e-3 if abs(x[0]) > 1e-10 else False)
+rej_samp_angle = fake_samp(0) # rej_samp(rand_x = lambda : rand.uniform(10e-3,10e-3))
+rej_samp_time = rej_samp(func = lambda x : norm.pdf(x, 1e-3/time_unit,0.5e-3/time_unit), rand_x = lambda : rand.uniform(0,2.5e-3/time_unit), rand_y = lambda : rand.uniform(0,norm.pdf(1e-3/time_unit, 1e-3/time_unit,0.5e-3/time_unit)))
 rej_samp_pos = rej_samp(func = lambda r : 1 if sum(map(lambda x : x**2, r)) < (1.5e-3)**2 else 0, rand_x = lambda : (rand.uniform(-1.5e-3,1.5e-3),rand.uniform(-1.5e-3,1.5e-3)), rand_y = lambda : 0.5)
 
 magnet_data = np.loadtxt("./csv/RingMagnet_BzProfile.csv",delimiter="\t")
@@ -49,63 +78,186 @@ def zero_condition(t,y):
 def lost_forwards(t, y):
     return y[-3] - 2
 
+def sideways_lost(t, y):
+    return sum(map(lambda x : x**2, y[-2:])) - 2
+
+def losing_backwards(t, y):
+    return y[-6] + 1e-2/velocity_unit
+
 lost_forwards.terminal = True
 zero_condition.terminal = True
+sideways_lost.terminal = True
+losing_backwards.terminal = True
 
 slower_magnet = pylcp.magField(get_interpolator([-10.5/cm_unit,0,0]))
 
-def evolve_beam_vel(v0, ham,magnets = slower_magnet,lasers = Slow_Beam, laserargs = {'det_slower' : -175e6/hertz_unit}, angle = 0, time = 0, r = [0,0]):
-    eq = pylcp.rateeq(lasers(**laserargs),magnets, ham,include_mag_forces=False)
+def evolve_beam_vel(v0, ham,magnets = slower_magnet,lasers = Slow_Beam, laserargs = {'det_slower' : -175e6/hertz_unit}, time = 0, r = [0,0]):
+    eq = pylcp.rateeq(lasers(**laserargs),magnets, ham,include_mag_forces=False,)
     try:
         eq.set_initial_pop(np.array([1., 0., 0., 0.]))
     except ValueError: # Quick and dirty solution to detect the two fermionic hamiltonians
         eq.set_initial_pop(np.array([0.5, 0.5, 0., 0., 0., 0., 0., 0.]))
-    eq.set_initial_position_and_velocity([-45.5/cm_unit,r[0],r[1]], [v0*np.cos(angle), v0*np.sin(angle), 0])
-    eq.evolve_motion([time, time + 1/time_unit], events=[zero_condition, backwards_lost], progress_bar=False, max_step = 1)
-    if(eq.sol.v[0][-1] < 0):
-        return -1,-1
+    eq.set_initial_position_and_velocity([-45.5/cm_unit,r[0],r[1]], v0)
+    try:
+        eq.evolve_motion([time, time + 50e-3/time_unit], events=[zero_condition, lost_forwards, sideways_lost, losing_backwards], progress_bar=False, max_step = 1e-3/time_unit, random_recoil = True)
+    except ValueError:
+        return [None]*5
+    # Rejection conditions
+    # if(eq.sol.v[0][-1] < 0):
+    #     return -1,-1,-1, eq.sol.v[:,-1], eq.sol.r[:,-1]
     
-    if eq.sol.r[0][-1] > 2:
-        return -2,-2
-    return eq.sol.v[0][-1], eq.sol.t[-1]
+    # if eq.sol.r[0][-1] > 2:
+    #     return -2,-2,-2, eq.sol.v[:,-1], eq.sol.r[:,-1]
 
-MC_runtime = int(1e5)
+    if sum(map(lambda x : x**2, eq.sol.r[:,-1])) >= 1.1:
+        return -3,-3,-3, eq.sol.v[:,-1], eq.sol.r[:,-1]
 
-speeds = []
-times = []
-init_speeds = []
-for i in range(MC_runtime):
-    print(f"{i+1}/{MC_runtime}: {100*(i+1)/MC_runtime:.2f}%", end = '\r')
+    return eq.sol.v[0][-1], eq.sol.t, eq.sol.v[1][-1], eq.sol.v[:,-1], [eq.sol.r[:,0] ,eq.sol.r[:,-1]] 
+
+def init_worker(pgr):
+    global progress
+    progress = pgr
+
+MC_runtime = int(1000e4)
+
+def MC_run(_):
+    global progress
+    with progress.get_lock():
+        progress.value += 1
+        cached_progress = progress.value
+    if cached_progress % 100 == 0:
+        print(f"{cached_progress}/{MC_runtime}: {100*cached_progress/MC_runtime:.2f}%", end = '\r')
     v0 = next(rej_samp_vel)
-    init_speeds.append(v0)
-    speed, time = evolve_beam_vel(v0, Hamiltonians[114], laserargs={'det_slower' : -607.5e6/hertz_unit}, angle = next(rej_samp_angle), time = next(rej_samp_time), r = next(rej_samp_pos))
+    # init_speeds.append(v0)
+    speed, time, trans_speed, final_speed, poss = evolve_beam_vel(v0, Hamiltonians[next(rej_samp_isotope)], laserargs={'det_slower' : -607.5e6/hertz_unit}, time = next(rej_samp_time), r = next(rej_samp_pos))
+    if speed is None:
+        return [None]*6
     if (speed < 0):
-        continue
-    speeds.append(speed)
-    times.append(time)
+        return (v0, None, None, None, final_speed, poss)
+    # speeds.append(speed)
+    # times.append(time)
+    return (v0, speed, [time[0], time[-1]], trans_speed, final_speed, poss)
 
-speeds = np.asarray(speeds)
-init_speeds = np.asarray(init_speeds)
-times = np.asarray(times)
+is_not_none = lambda x : not x is None
+pre_none_check = lambda x : not x[1] is None
 
-plt.figure(figsize = [12,8])
-# plt.plot(speeds*velocity_unit, np.linspace(0,10,speeds.size) , "x")
-plt.hist(init_speeds*velocity_unit, bins = np.linspace(-4,300,305), label = "Initial velocities")
-plt.hist(speeds*velocity_unit, bins = np.linspace(-4,300,305), label = "Final velocities")
-plt.ylabel("Counts [1]")
-plt.xlabel("$v_x$ [m/s]")
-plt.legend()
-plt.tight_layout()
-plt.show()
+if __name__ == "__main__":
+    __spec__ = None
+    
+    progress = Value('i', 0)
 
-plt.figure(figsize = [12,8])
-# plt.plot(speeds*velocity_unit, np.linspace(0,10,speeds.size) , "x")
-plt.hist(times*time_unit*1e3, bins = 100)
-plt.ylabel("Counts [1]")
-plt.xlabel("Time of flight [ms]")
-plt.tight_layout()
-plt.show()
+    # speeds = []
+    # times = []
+    # init_speeds = []
+    # for i in range(MC_runtime):
+    #     print(f"{i+1}/{MC_runtime}: {100*(i+1)/MC_runtime:.2f}%", end = '\r')
+    #     v0 = next(rej_samp_vel)
+    #     init_speeds.append(v0)
+    #     speed, time = evolve_beam_vel(v0, Hamiltonians[next(rej_samp_isotope)], laserargs={'det_slower' : -607.5e6/hertz_unit}, angle = next(rej_samp_angle), time = next(rej_samp_time), r = next(rej_samp_pos))
+    #     if (speed < 0):
+    #         continue
+    #     speeds.append(speed)
+    #     times.append(time)
 
+    with Pool(processes=14, initializer=init_worker, initargs=(progress,)) as pool:
+        res = pool.map(MC_run, range(MC_runtime))
+    
+    # res = map(MC_run, range(MC_runtime))
+    # res = []
+    # for i in range(MC_runtime):
+    #     cProfile.run('res.append(MC_run(i))')
+    # res = list(filter(None, res))
+
+    res = list(filter(lambda x : not x[0] is None, res))
+
+    init_speeds, speeds, times, trans_speeds, final_vels, final_poss = zip(*res)
+    
+    no_none_res = list(filter(pre_none_check, res))
+    
+    init_speeds_no_none, speeds, times, trans_speeds, final_vels, poss = zip(*no_none_res)
+    
+    start_times, times = zip(*times)
+    start_poss, final_poss = zip(*poss)
+    
+    speeds = np.asarray(speeds)
+    init_speeds = np.asarray(init_speeds)
+    times = np.asarray(times)
+    trans_speeds = np.asarray(trans_speeds)
+    start_times = np.asarray(start_times)
+    start_poss = np.asarray(start_poss)
+    final_poss = np.asarray(final_poss)
+    init_speeds_no_none = np.asarray(init_speeds_no_none)
+
+    transformed_speeds = np.einsum('i,ij->j',np.array([1,1])/np.sqrt(2), np.array([speeds, trans_speeds]))
+
+    # t_samp, iso_samp, pos_samp = list(map(lambda x : list(map(lambda _ : next(x), range(int(1e4)))), [rej_samp_time, rej_samp_isotope, rej_samp_pos]))
+    vel_samp = init_speeds
+    t_samp = start_times
+    pos_samp = start_poss
+    
+    fig = plt.figure(figsize= [12, 8])
+    
+    gs = gridspec.GridSpec(2, 1, figure=fig)
+    
+    gs0 = gs[0].subgridspec(1,3)
+    ax1 = fig.add_subplot(gs0[:,0])
+    ax2 = fig.add_subplot(gs0[:,1])
+    ax3 = fig.add_subplot(gs0[:,2])
+    
+    gs1 = gs[1].subgridspec(1,3)
+
+    axtime = fig.add_subplot(gs1[:,0])
+    # axisotope = fig.add_subplot(gs1[:,1])
+    axpos = fig.add_subplot(gs1[:,1])
+    axvel= fig.add_subplot(gs1[:,2])
+    
+    # fig, ax = plt.subplots(figsize = [12, 8])
+    # plt.plot(speeds*velocity_unit, np.linspace(0,10,speeds.size) , "x")
+    ax1.hist(init_speeds[:,0]*velocity_unit, bins = np.linspace(-4,300,305))
+
+    # ax2.hist(transformed_speeds*velocity_unit, bins = np.linspace(-4,300,305), label = "Transformed final velocities")
+    ax1.set_ylabel("Initial Counts [1]")
+    ax1.set_xlabel("$v_x$ [m/s]")
+    # ax.legend()
+    textstr = '\n'.join([f"Runs: {MC_runtime}", f"Success: {init_speeds[:,0].size}", f"Measured: {times.size}"])
+    props = dict(boxstyle='round')
+    ax1.text(0.05, 0.95, textstr, transform=ax1.transAxes, fontsize=14, verticalalignment='top', bbox=props)
+    
+    # plt.plot(speeds*velocity_unit, np.linspace(0,10,speeds.size) , "x")
+    ax2.hist(init_speeds_no_none[:,0]*velocity_unit, bins = np.linspace(-4,300,305), label = "Initial velocities")
+    ax2.hist(speeds*velocity_unit, bins = np.linspace(-4,300,305), label = "Final velocities")
+    # ax2.hist(transformed_speeds*velocity_unit, bins = np.linspace(-4,300,305), label = "Transformed final velocities")
+    ax2.set_ylabel("Counts [1]")
+    ax2.set_xlabel("$v_x$ [m/s]")
+    ax2.legend()
+    # textstr = '\n'.join([f"Runs: {MC_runtime}", f"Measured: {times.size}"])
+    # props = dict(boxstyle='round')
+    # ax2.text(0.05, 0.95, textstr, transform=ax2.transAxes, fontsize=14, verticalalignment='top', bbox=props)
+
+    
+    # plt.plot(speeds*velocity_unit, np.linspace(0,10,speeds.size) , "x")
+    ax3.hist(times*time_unit*1e3, bins = 100)
+    ax3.set_ylabel("Counts [1]")
+    ax3.set_xlabel("Time of flight [ms]")
+
+
+    # axisotope.hist(iso_samp, bins = [106,107,108,109,110,111,112,113,114,115,116,117])
+    # axisotope.set_xlabel("Isotope")
+    # axisotope.set_ylabel("Count [1]")
+    
+    axtime.hist(np.array(t_samp)*time_unit*1e3, bins = 100)
+    axtime.set_xlabel("Time [ms]")
+    axtime.set_ylabel("Count [1]")
+    
+    axpos.hist2d(*np.array(pos_samp)[:,1:].T, bins = [51, 51])
+    axpos.set_xlabel("y [cm]")
+    axpos.set_ylabel("z [cm]")
+    
+    axvel.hist2d(*(np.array(init_speeds)[:,:-1].T*velocity_unit), bins = [51, 51])
+    axvel.set_xlabel("$v_x$ [m/s]")
+    axvel.set_ylabel("$v_y$ [m/s]")
+
+    fig.tight_layout()
 
 # xs = np.linspace(-30,30,501)
 # plt.plot(xs, [interpolate_magnet([x,0,0]) for x in xs])
