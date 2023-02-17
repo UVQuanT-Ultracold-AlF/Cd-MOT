@@ -24,7 +24,7 @@ def cdf_samp(cdf, valrange, randrange = None):
     while True:
         rand_prop = rand.uniform(*randrange)
         yield bisect(lambda x : cdf(x) - rand_prop,*valrange, xtol = 1e-2/velocity_unit)
-        
+
 abundance_data[107] = 0
 abundance_data[109] = 0
 abundance_data[115] = 0
@@ -34,14 +34,14 @@ transverse_pdf = lambda x : norm.pdf(x, 0/velocity_unit, 34/velocity_unit)
 transverse_cdf = lambda x : norm.cdf(x, 0/velocity_unit, 34/velocity_unit)
 transverse_cutoff = np.tan(35e-3)*200/velocity_unit
 
-rej_samp_isotope = fake_samp(114) # rej_samp(func = lambda x : abundance_data[x], rand_x = lambda : rand.randint(106,116), rand_y = lambda : rand.uniform(0,0.2873))
-# rej_samp_vel = rej_samp(func = lambda x : capture_pdf(x[0]), rand_x = lambda : [rand.uniform(100/velocity_unit,200/velocity_unit), 0, 0], rand_y = lambda : rand.uniform(0,capture_pdf(mean)))
-rej_samp_v0 = cdf_samp(capture_cdf, [0,300/velocity_unit]) # rej_samp(func = lambda x : capture_pdf(x), rand_x = lambda : rand.uniform(100/velocity_unit,200/velocity_unit), rand_y = lambda : rand.uniform(0,capture_pdf(mean)))
-rej_samp_vt = cdf_samp(transverse_cdf, [-transverse_cutoff, transverse_cutoff]) # rej_samp(func = lambda x : transverse_pdf(abs(x)), rand_x = lambda : rand.uniform(-transverse_cutoff,transverse_cutoff), rand_y = lambda : rand.uniform(0,transverse_pdf(transverse_cutoff)))
-rej_samp_vel = rej_samp(func = lambda x : x, rand_x = lambda : [next(rej_samp_v0), next(rej_samp_vt), 0], rand_y = lambda : 0, comp_func = lambda x ,y : abs(np.arctan(x[1]/x[0])) < 75e-3 if abs(x[0]) > 1e-10 else False)
-rej_samp_angle = fake_samp(0) # rej_samp(rand_x = lambda : rand.uniform(10e-3,10e-3))
-rej_samp_time = rej_samp(func = lambda x : norm.pdf(x, 1e-3/time_unit,0.5e-3/time_unit), rand_x = lambda : rand.uniform(0,2.5e-3/time_unit), rand_y = lambda : rand.uniform(0,norm.pdf(1e-3/time_unit, 1e-3/time_unit,0.5e-3/time_unit)))
-rej_samp_pos = rej_samp(func = lambda r : 1 if sum(map(lambda x : x**2, r)) < (1.5e-3)**2 else 0, rand_x = lambda : (rand.uniform(-1.5e-3,1.5e-3),rand.uniform(-1.5e-3,1.5e-3)), rand_y = lambda : 0.5)
+samp_isotope = fake_samp(114) # rej_samp(func = lambda x : abundance_data[x], rand_x = lambda : rand.randint(106,116), rand_y = lambda : rand.uniform(0,0.2873))
+# samp_vel = rej_samp(func = lambda x : capture_pdf(x[0]), rand_x = lambda : [rand.uniform(100/velocity_unit,200/velocity_unit), 0, 0], rand_y = lambda : rand.uniform(0,capture_pdf(mean)))
+samp_v0 = cdf_samp(capture_cdf, [0,300/velocity_unit]) # rej_samp(func = lambda x : capture_pdf(x), rand_x = lambda : rand.uniform(100/velocity_unit,200/velocity_unit), rand_y = lambda : rand.uniform(0,capture_pdf(mean)))
+samp_vt = fake_samp(0) # cdf_samp(transverse_cdf, [-transverse_cutoff, transverse_cutoff]) # rej_samp(func = lambda x : transverse_pdf(abs(x)), rand_x = lambda : rand.uniform(-transverse_cutoff,transverse_cutoff), rand_y = lambda : rand.uniform(0,transverse_pdf(transverse_cutoff)))
+samp_angle = fake_samp(0) # rej_samp(rand_x = lambda : rand.uniform(0,2*np.pi))
+samp_vel = rej_samp(func = lambda x : x, rand_x = lambda : [next(samp_v0), *((lambda x, a : [x*np.sin(a), x*np.cos(a)])(next(samp_vt), next(samp_angle)))], rand_y = lambda : 0, comp_func = lambda x ,y : abs(np.arctan(np.sqrt(x[1]**2 + x[2]**2)/x[0])) < 75e-3 if abs(x[0]) > 1e-10 else False)
+samp_time = fake_samp(0)#cdf_samp(lambda x : norm.cdf(x, 1e-3/time_unit,0.5e-3/time_unit), [0/time_unit, 2.5/time_unit]) # rej_samp(func = lambda x : norm.pdf(x, 1e-3/time_unit,0.5e-3/time_unit), rand_x = lambda : rand.uniform(0,2.5e-3/time_unit), rand_y = lambda : rand.uniform(0,norm.pdf(1e-3/time_unit, 1e-3/time_unit,0.5e-3/time_unit)))
+samp_pos = rej_samp(func = lambda r : 1 if sum(map(lambda x : x**2, r)) < (2e-1)**2 else 0, rand_x = lambda : (rand.uniform(-2e-1,2e-1),rand.uniform(-2e-1,2e-1)), rand_y = lambda : 0.5)
 
 magnet_data = np.loadtxt("./csv/RingMagnet_BzProfile.csv",delimiter="\t")
 def get_interpolator(pos):
@@ -51,29 +51,37 @@ def get_interpolator(pos):
         x = abs(R[0])*10
         prevpos = None
         prevB = None
-        B = None
+        
         for pos, Bz in magnet_data:
             if(x < pos):
                 break
             prevpos = pos
             prevB = Bz
         else:
-            B = 0
-        if (B is None):
-            B = prevB + (x - prevpos)*(Bz - prevB)/(pos - prevpos)
+            return [0,0,0]
+
+        if prevpos is None:
+            return [0,0,0]
+
+        B = prevB + (x - prevpos)*(Bz - prevB)/(pos - prevpos)
         
         B = B*10**(-4)*consts.value('Bohr magneton')/(10**6*91*consts.h)
 
         return [B,0,0]
     return interpolate_magnet
 
-def Slow_Beam(det_slower, *args):
+def No_Beams(*args, **kwargs):
+    return pylcp.laserBeams([], beam_type=pylcp.gaussianBeam)
+
+def Slow_Beam(det_slower, *args, pol = [0,1,1j], **kwargs):
+    # pol /= sum(map(lambda x : x*np.conj(x), pol))
     return pylcp.laserBeams([
         {'kvec':np.array([-1, 0., 0.]), 'pol':-1, 'delta':det_slower, 's':slower_s,'wb':slower_beam_width}
     ], beam_type=pylcp.gaussianBeam)
 
 def zero_condition(t,y):
-    return sum(map(lambda x : x**2, y[-3:])) - 1
+    d = ((y[-2] + y[-3])**2 + (y[-2] - y[-3])**2)/2
+    return d - 0.5**2 # sum(map(lambda x : x**2, y[-3:])) - 1
 
 def lost_forwards(t, y):
     return y[-3] - 2
@@ -89,9 +97,14 @@ zero_condition.terminal = True
 sideways_lost.terminal = True
 losing_backwards.terminal = True
 
+
+PROCNUM = 8
+BEAM = No_Beams
+RECOIL = False
+
 slower_magnet = pylcp.magField(get_interpolator([-10.5/cm_unit,0,0]))
 
-def evolve_beam_vel(v0, ham,magnets = slower_magnet,lasers = Slow_Beam, laserargs = {'det_slower' : -175e6/hertz_unit}, time = 0, r = [0,0]):
+def evolve_beam_vel(v0, ham,magnets = slower_magnet,lasers = BEAM, laserargs = {'det_slower' : -175e6/hertz_unit}, time = 0, r = [0,0]):
     eq = pylcp.rateeq(lasers(**laserargs),magnets, ham,include_mag_forces=False,)
     try:
         eq.set_initial_pop(np.array([1., 0., 0., 0.]))
@@ -99,7 +112,7 @@ def evolve_beam_vel(v0, ham,magnets = slower_magnet,lasers = Slow_Beam, laserarg
         eq.set_initial_pop(np.array([0.5, 0.5, 0., 0., 0., 0., 0., 0.]))
     eq.set_initial_position_and_velocity([-45.5/cm_unit,r[0],r[1]], v0)
     try:
-        eq.evolve_motion([time, time + 50e-3/time_unit], events=[zero_condition, lost_forwards, sideways_lost, losing_backwards], progress_bar=False, max_step = 1e-3/time_unit, random_recoil = True)
+        eq.evolve_motion([time, time + 50e-3/time_unit], events=[zero_condition, lost_forwards, sideways_lost, losing_backwards], progress_bar=False, max_step = 1e-4/time_unit, random_recoil = RECOIL)
     except ValueError:
         return [None]*5
     # Rejection conditions
@@ -109,16 +122,16 @@ def evolve_beam_vel(v0, ham,magnets = slower_magnet,lasers = Slow_Beam, laserarg
     # if eq.sol.r[0][-1] > 2:
     #     return -2,-2,-2, eq.sol.v[:,-1], eq.sol.r[:,-1]
 
-    if sum(map(lambda x : x**2, eq.sol.r[:,-1])) >= 1.1:
-        return -3,-3,-3, eq.sol.v[:,-1], eq.sol.r[:,-1]
+    if zero_condition(0, eq.sol.r[:,-1]) > 1e-3:
+        return -3,-3,-3, eq.sol.v[:,-1], [eq.sol.r[:,0], eq.sol.r[:,-1]]
 
-    return eq.sol.v[0][-1], eq.sol.t, eq.sol.v[1][-1], eq.sol.v[:,-1], [eq.sol.r[:,0] ,eq.sol.r[:,-1]] 
+    return eq.sol.v[0][-1], eq.sol.t, np.sqrt(eq.sol.v[1][-1]**2 + eq.sol.v[2][-1]**2), eq.sol.v[:,-1], [eq.sol.r[:,0] ,eq.sol.r[:,-1]] 
 
 def init_worker(pgr):
     global progress
     progress = pgr
 
-MC_runtime = int(1000e4)
+MC_runtime = 1_000_000
 
 def MC_run(_):
     global progress
@@ -127,9 +140,9 @@ def MC_run(_):
         cached_progress = progress.value
     if cached_progress % 100 == 0:
         print(f"{cached_progress}/{MC_runtime}: {100*cached_progress/MC_runtime:.2f}%", end = '\r')
-    v0 = next(rej_samp_vel)
+    v0 = next(samp_vel)
     # init_speeds.append(v0)
-    speed, time, trans_speed, final_speed, poss = evolve_beam_vel(v0, Hamiltonians[next(rej_samp_isotope)], laserargs={'det_slower' : -607.5e6/hertz_unit}, time = next(rej_samp_time), r = next(rej_samp_pos))
+    speed, time, trans_speed, final_speed, poss = evolve_beam_vel(v0, Hamiltonians[next(samp_isotope)], laserargs={'det_slower' : -607.5e6/hertz_unit}, time = next(samp_time), r = next(samp_pos))
     if speed is None:
         return [None]*6
     if (speed < 0):
@@ -151,15 +164,15 @@ if __name__ == "__main__":
     # init_speeds = []
     # for i in range(MC_runtime):
     #     print(f"{i+1}/{MC_runtime}: {100*(i+1)/MC_runtime:.2f}%", end = '\r')
-    #     v0 = next(rej_samp_vel)
+    #     v0 = next(samp_vel)
     #     init_speeds.append(v0)
-    #     speed, time = evolve_beam_vel(v0, Hamiltonians[next(rej_samp_isotope)], laserargs={'det_slower' : -607.5e6/hertz_unit}, angle = next(rej_samp_angle), time = next(rej_samp_time), r = next(rej_samp_pos))
+    #     speed, time = evolve_beam_vel(v0, Hamiltonians[next(samp_isotope)], laserargs={'det_slower' : -607.5e6/hertz_unit}, angle = next(samp_angle), time = next(samp_time), r = next(samp_pos))
     #     if (speed < 0):
     #         continue
     #     speeds.append(speed)
     #     times.append(time)
 
-    with Pool(processes=14, initializer=init_worker, initargs=(progress,)) as pool:
+    with Pool(processes=PROCNUM, initializer=init_worker, initargs=(progress,)) as pool:
         res = pool.map(MC_run, range(MC_runtime))
     
     # res = map(MC_run, range(MC_runtime))
@@ -170,14 +183,15 @@ if __name__ == "__main__":
 
     res = list(filter(lambda x : not x[0] is None, res))
 
-    init_speeds, speeds, times, trans_speeds, final_vels, final_poss = zip(*res)
+    init_speeds, speeds, times, trans_speeds, final_vels, poss = zip(*res)
     
     no_none_res = list(filter(pre_none_check, res))
     
-    init_speeds_no_none, speeds, times, trans_speeds, final_vels, poss = zip(*no_none_res)
+    init_speeds_no_none, speeds, times, trans_speeds, final_vels, cap_poss = zip(*no_none_res)
     
     start_times, times = zip(*times)
     start_poss, final_poss = zip(*poss)
+    capstart_poss, _ = zip(*cap_poss)
     
     speeds = np.asarray(speeds)
     init_speeds = np.asarray(init_speeds)
@@ -190,7 +204,7 @@ if __name__ == "__main__":
 
     transformed_speeds = np.einsum('i,ij->j',np.array([1,1])/np.sqrt(2), np.array([speeds, trans_speeds]))
 
-    # t_samp, iso_samp, pos_samp = list(map(lambda x : list(map(lambda _ : next(x), range(int(1e4)))), [rej_samp_time, rej_samp_isotope, rej_samp_pos]))
+    # t_samp, iso_samp, pos_samp = list(map(lambda x : list(map(lambda _ : next(x), range(int(1e4)))), [samp_time, samp_isotope, samp_pos]))
     vel_samp = init_speeds
     t_samp = start_times
     pos_samp = start_poss
@@ -200,28 +214,37 @@ if __name__ == "__main__":
     gs = gridspec.GridSpec(2, 1, figure=fig)
     
     gs0 = gs[0].subgridspec(1,3)
-    ax1 = fig.add_subplot(gs0[:,0])
-    ax2 = fig.add_subplot(gs0[:,1])
-    ax3 = fig.add_subplot(gs0[:,2])
+    # ax1 = fig.add_subplot(gs0[:,0])
+    ax2 = fig.add_subplot(gs0[:,0])
+    ax3 = fig.add_subplot(gs0[:,1])
+    axcappos = fig.add_subplot(gs0[:,2])
     
     gs1 = gs[1].subgridspec(1,3)
 
     axtime = fig.add_subplot(gs1[:,0])
     # axisotope = fig.add_subplot(gs1[:,1])
     axpos = fig.add_subplot(gs1[:,1])
-    axvel= fig.add_subplot(gs1[:,2])
+    # axvel= fig.add_subplot(gs1[:,2])
     
+    gsvel = gs1[:,2].subgridspec(6,6)
+    axvel = fig.add_subplot(gsvel[1:,:-1])
+    axvx = fig.add_subplot(gsvel[0,:-1], sharex = axvel)
+    axvt = fig.add_subplot(gsvel[1:,-1], sharey = axvel)
+        
     # fig, ax = plt.subplots(figsize = [12, 8])
     # plt.plot(speeds*velocity_unit, np.linspace(0,10,speeds.size) , "x")
-    ax1.hist(init_speeds[:,0]*velocity_unit, bins = np.linspace(-4,300,305))
+    # ax1.hist(init_speeds[:,0]*velocity_unit, bins = np.linspace(-4,300,305))
 
-    # ax2.hist(transformed_speeds*velocity_unit, bins = np.linspace(-4,300,305), label = "Transformed final velocities")
-    ax1.set_ylabel("Initial Counts [1]")
-    ax1.set_xlabel("$v_x$ [m/s]")
+    # # ax2.hist(transformed_speeds*velocity_unit, bins = np.linspace(-4,300,305), label = "Transformed final velocities")
+    # ax1.set_ylabel("Initial Counts [1]")
+    # ax1.set_xlabel("$v_x$ [m/s]")
     # ax.legend()
     textstr = '\n'.join([f"Runs: {MC_runtime}", f"Success: {init_speeds[:,0].size}", f"Measured: {times.size}"])
     props = dict(boxstyle='round')
-    ax1.text(0.05, 0.95, textstr, transform=ax1.transAxes, fontsize=14, verticalalignment='top', bbox=props)
+    props2 = dict(boxstyle='round', fc = "white", alpha = 0.75)
+    props = props2
+    ax2.text(0.05, 0.95, textstr, transform=ax2.transAxes, fontsize=14, verticalalignment='top', bbox=props)
+    
     
     # plt.plot(speeds*velocity_unit, np.linspace(0,10,speeds.size) , "x")
     ax2.hist(init_speeds_no_none[:,0]*velocity_unit, bins = np.linspace(-4,300,305), label = "Initial velocities")
@@ -249,13 +272,120 @@ if __name__ == "__main__":
     axtime.set_xlabel("Time [ms]")
     axtime.set_ylabel("Count [1]")
     
+    
     axpos.hist2d(*np.array(pos_samp)[:,1:].T, bins = [51, 51])
     axpos.set_xlabel("y [cm]")
     axpos.set_ylabel("z [cm]")
+    axpos.text(0.05, 0.95, "Start pos for sampled atoms", transform=axpos.transAxes, fontsize=14, verticalalignment='top', bbox = props2)
     
-    axvel.hist2d(*(np.array(init_speeds)[:,:-1].T*velocity_unit), bins = [51, 51])
+    
+    axcappos.hist2d(*np.array(capstart_poss)[:,1:].T, bins = [51, 51])
+    axcappos.set_xlabel("y [cm]")
+    axcappos.set_ylabel("z [cm]")
+    axcappos.text(0.05, 0.95, "Start pos for measured atoms", transform=axcappos.transAxes, fontsize=14, verticalalignment='top', bbox = props2)
+    
+    init_speeds_transf = np.array(list(map(lambda x: [x[0], np.sqrt(x[1]**2 + x[2]**2)], init_speeds)))
+    _, xbins, ybins, _ = axvel.hist2d(*(init_speeds_transf.T*velocity_unit), bins = [51, 51])
+    axvel.set_xlabel("$v_x$ [m/s]")
+    axvel.set_ylabel("$v_t$ [m/s]")
+    
+    axvx.hist(np.array(init_speeds_transf)[:,0]*velocity_unit, bins = xbins, orientation='vertical')
+    plt.setp(axvx.get_xticklabels(), visible = False)
+    plt.setp(axvx.get_yticklabels(), visible = False)
+    axvt.hist(np.array(init_speeds_transf)[:,1]*velocity_unit, bins = ybins, orientation='horizontal')
+    plt.setp(axvt.get_xticklabels(), visible = False)
+    plt.setp(axvt.get_yticklabels(), visible = False)
+    # axvt.set_xlim(axvt.get_xlim()[::-1])
+
+    fig.tight_layout()
+
+
+    fig = plt.figure(figsize= [12, 8])
+    
+    gs = gridspec.GridSpec(2, 1, figure=fig)
+    
+    gs0 = gs[0].subgridspec(1,3)
+    # ax1 = fig.add_subplot(gs0[:,0])
+    ax2 = fig.add_subplot(gs0[:,0])
+    ax3 = fig.add_subplot(gs0[:,1])
+    axcappos = fig.add_subplot(gs0[:,2])
+    
+    gs1 = gs[1].subgridspec(1,3)
+
+    axtime = fig.add_subplot(gs1[:,0])
+    # axisotope = fig.add_subplot(gs1[:,1])
+    axpos = fig.add_subplot(gs1[:,1])
+    # axvel= fig.add_subplot(gs1[:,2])
+    
+    gsvel = gs1[:,2].subgridspec(6,6)
+    axvel = fig.add_subplot(gsvel[1:,:-1])
+    axvx = fig.add_subplot(gsvel[0,:-1], sharex = axvel)
+    axvt = fig.add_subplot(gsvel[1:,-1], sharey = axvel)
+        
+    # fig, ax = plt.subplots(figsize = [12, 8])
+    # plt.plot(speeds*velocity_unit, np.linspace(0,10,speeds.size) , "x")
+    # ax1.hist(init_speeds[:,0]*velocity_unit, bins = np.linspace(-4,300,305))
+
+    # # ax2.hist(transformed_speeds*velocity_unit, bins = np.linspace(-4,300,305), label = "Transformed final velocities")
+    # ax1.set_ylabel("Initial Counts [1]")
+    # ax1.set_xlabel("$v_x$ [m/s]")
+    # ax.legend()
+    textstr = '\n'.join([f"Runs: {MC_runtime}", f"Success: {init_speeds[:,0].size}", f"Measured: {times.size}"])
+    props = dict(boxstyle='round')
+    props2 = dict(boxstyle='round', fc = "white", alpha = 0.75)
+    props = props2
+    ax2.text(0.05, 0.95, textstr, transform=ax2.transAxes, fontsize=14, verticalalignment='top', bbox=props)
+    
+    
+    # plt.plot(speeds*velocity_unit, np.linspace(0,10,speeds.size) , "x")
+    ax2.hist(init_speeds_no_none[:,0]*velocity_unit, bins = np.linspace(-4,300,305), label = "Initial velocities")
+    ax2.hist(transformed_speeds*velocity_unit*np.sqrt(2), bins = np.linspace(-4,300,305), label = "Final velocities")
+    # ax2.hist(transformed_speeds*velocity_unit, bins = np.linspace(-4,300,305), label = "Transformed final velocities")
+    ax2.set_ylabel("Counts [1]")
+    ax2.set_xlabel("$v_x$ [m/s]")
+    ax2.legend()
+    # textstr = '\n'.join([f"Runs: {MC_runtime}", f"Measured: {times.size}"])
+    # props = dict(boxstyle='round')
+    # ax2.text(0.05, 0.95, textstr, transform=ax2.transAxes, fontsize=14, verticalalignment='top', bbox=props)
+
+    
+    # plt.plot(speeds*velocity_unit, np.linspace(0,10,speeds.size) , "x")
+    ax3.hist(times*time_unit*1e3, bins = 100)
+    ax3.set_ylabel("Counts [1]")
+    ax3.set_xlabel("Time of flight [ms]")
+
+
+    # axisotope.hist(iso_samp, bins = [106,107,108,109,110,111,112,113,114,115,116,117])
+    # axisotope.set_xlabel("Isotope")
+    # axisotope.set_ylabel("Count [1]")
+    
+    axtime.hist(np.array(t_samp)*time_unit*1e3, bins = 100)
+    axtime.set_xlabel("Time [ms]")
+    axtime.set_ylabel("Count [1]")
+    
+    
+    axpos.hist2d(*np.array(pos_samp)[:,1:].T, bins = [51, 51])
+    axpos.set_xlabel("y [cm]")
+    axpos.set_ylabel("z [cm]")
+    axpos.text(0.05, 0.95, "Start pos for sampled atoms", transform=axpos.transAxes, fontsize=14, verticalalignment='top', bbox = props2)
+    
+    
+    axcappos.hist2d(*np.array(capstart_poss)[:,1:].T, bins = [51, 51])
+    axcappos.set_xlabel("y [cm]")
+    axcappos.set_ylabel("z [cm]")
+    axcappos.text(0.05, 0.95, "Start pos for measured atoms", transform=axcappos.transAxes, fontsize=14, verticalalignment='top', bbox = props2)
+    
+    _, xbins, ybins, _ = axvel.hist2d(*(np.array(init_speeds_transf).T*velocity_unit), bins = [51, 51])
     axvel.set_xlabel("$v_x$ [m/s]")
     axvel.set_ylabel("$v_y$ [m/s]")
+    
+    axvx.hist(np.array(init_speeds_transf)[:,0]*velocity_unit, bins = xbins, orientation='vertical')
+    plt.setp(axvx.get_xticklabels(), visible = False)
+    plt.setp(axvx.get_yticklabels(), visible = False)
+    axvt.hist(np.array(init_speeds_transf)[:,1]*velocity_unit, bins = ybins, orientation='horizontal')
+    plt.setp(axvt.get_xticklabels(), visible = False)
+    plt.setp(axvt.get_yticklabels(), visible = False)
+    # axvt.set_xlim(axvt.get_xlim()[::-1])
 
     fig.tight_layout()
 
