@@ -37,11 +37,11 @@ transverse_cutoff = np.tan(35e-3)*200/velocity_unit
 samp_isotope = fake_samp(114) # rej_samp(func = lambda x : abundance_data[x], rand_x = lambda : rand.randint(106,116), rand_y = lambda : rand.uniform(0,0.2873))
 # samp_vel = rej_samp(func = lambda x : capture_pdf(x[0]), rand_x = lambda : [rand.uniform(100/velocity_unit,200/velocity_unit), 0, 0], rand_y = lambda : rand.uniform(0,capture_pdf(mean)))
 samp_v0 = cdf_samp(capture_cdf, [0,300/velocity_unit]) # rej_samp(func = lambda x : capture_pdf(x), rand_x = lambda : rand.uniform(100/velocity_unit,200/velocity_unit), rand_y = lambda : rand.uniform(0,capture_pdf(mean)))
-samp_vt = cdf_samp(transverse_cdf, [-transverse_cutoff, transverse_cutoff]) # rej_samp(func = lambda x : transverse_pdf(abs(x)), rand_x = lambda : rand.uniform(-transverse_cutoff,transverse_cutoff), rand_y = lambda : rand.uniform(0,transverse_pdf(transverse_cutoff)))
+samp_vt =  cdf_samp(transverse_cdf, [-transverse_cutoff, transverse_cutoff]) # rej_samp(func = lambda x : transverse_pdf(abs(x)), rand_x = lambda : rand.uniform(-transverse_cutoff,transverse_cutoff), rand_y = lambda : rand.uniform(0,transverse_pdf(transverse_cutoff)))
 samp_angle = rej_samp(rand_x = lambda : rand.uniform(0,2*np.pi))
 samp_vel = rej_samp(func = lambda x : x, rand_x = lambda : [next(samp_v0), *((lambda x, a : [x*np.sin(a), x*np.cos(a)])(next(samp_vt), next(samp_angle)))], rand_y = lambda : 0, comp_func = lambda x ,y : abs(np.arctan(np.sqrt(x[1]**2 + x[2]**2)/x[0])) < 75e-3 if abs(x[0]) > 1e-10 else False)
 samp_time = cdf_samp(lambda x : norm.cdf(x, 1e-3/time_unit,0.5e-3/time_unit), [0/time_unit, 2.5/time_unit]) # rej_samp(func = lambda x : norm.pdf(x, 1e-3/time_unit,0.5e-3/time_unit), rand_x = lambda : rand.uniform(0,2.5e-3/time_unit), rand_y = lambda : rand.uniform(0,norm.pdf(1e-3/time_unit, 1e-3/time_unit,0.5e-3/time_unit)))
-samp_pos = fake_samp([0,0])#rej_samp(func = lambda r : 1 if sum(map(lambda x : x**2, r)) < (2e-1)**2 else 0, rand_x = lambda : (rand.uniform(-2e-1,2e-1),rand.uniform(-2e-1,2e-1)), rand_y = lambda : 0.5)
+samp_pos = rej_samp(func = lambda r : 1 if sum(map(lambda x : x**2, r)) < (2e-1)**2 else 0, rand_x = lambda : (rand.uniform(-2e-1,2e-1),rand.uniform(-2e-1,2e-1)), rand_y = lambda : 0.5)
 
 magnet_data = np.loadtxt("./csv/RingMagnet_BzProfile.csv",delimiter="\t")
 def get_interpolator(pos):
@@ -75,17 +75,30 @@ def No_Beams(*args, **kwargs):
 
 def Slow_Beam(det_slower, *args, pol = [0,1,1j], **kwargs):
     # pol /= sum(map(lambda x : x*np.conj(x), pol))
-    pol_slower = np.pi/4
     return pylcp.laserBeams([
-        {'kvec':np.array([-1, 0., 0.]), 'pol':np.array([0,np.exp(1j*pol_slower),np.exp(-1j*pol_slower)]), 'delta':det_slower, 's':slower_s,'wb':slower_beam_width, 'pol_coord':'cartesian'}
+        {'kvec':np.array([-1, 0., 0.]), 'pol':-1, 'delta':det_slower, 's':slower_s,'wb':slower_beam_width},
+        #{'kvec':np.array([0., 1., 0.]), 'pol': np.array([0., 1., 0.]), 'delta':-50e6/hertz_unit, 's':slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'},
+        #{'kvec':np.array([0.,-1., 0.]), 'pol': np.array([0., 1., 0.]), 'delta':-50e6/hertz_unit, 's':slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'},
+        #{'kvec':np.array([0., 0., 1.]), 'pol': np.array([0., 1., 0.]), 'delta':-50e6/hertz_unit, 's':slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'},
+        #{'kvec':np.array([0., 0.,-1.]), 'pol': np.array([0., 1., 0.]), 'delta':-50e6/hertz_unit, 's':slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'},
+        {'kvec':np.array([ 0.125, 0., 1.]), 'pol': np.array([0., 1., 0.]), 'delta':-125e6/hertz_unit, 's':1.5*slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'},
+        {'kvec':np.array([ 0.125, 0.,-1.]), 'pol': np.array([0., 1., 0.]), 'delta':-125e6/hertz_unit, 's':1.5*slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'},
+        {'kvec':np.array([-0.125, 0.,-1.]), 'pol': np.array([0., 1., 0.]), 'delta':-125e6/hertz_unit, 's':1.5*slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'},
+        {'kvec':np.array([-0.125, 0., 1.]), 'pol': np.array([0., 1., 0.]), 'delta':-125e6/hertz_unit, 's':1.5*slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'},
+        {'kvec':np.array([ 0.125, 1., 0.]), 'pol': np.array([0., 0., 1.]), 'delta':-125e6/hertz_unit, 's':1.5*slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'},
+        {'kvec':np.array([ 0.125,-1., 0.]), 'pol': np.array([0., 0., 1.]), 'delta':-125e6/hertz_unit, 's':1.5*slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'},
+        {'kvec':np.array([-0.125,-1., 0.]), 'pol': np.array([0., 0., 1.]), 'delta':-125e6/hertz_unit, 's':1.5*slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'},
+        {'kvec':np.array([-0.125, 1., 0.]), 'pol': np.array([0., 0., 1.]), 'delta':-125e6/hertz_unit, 's':1.5*slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'}
     ], beam_type=pylcp.gaussianBeam)
 
+z_0 = -35/cm_unit
+
 def zero_condition(t,y):
-    d = ((y[-2] + y[-3])**2 + (y[-2] - y[-3])**2)/2
+    d = ((y[-2] + y[-3] + z_0)**2 + (y[-2] - y[-3] - z_0)**2)/2
     return d - 0.5**2 # sum(map(lambda x : x**2, y[-3:])) - 1
 
 def lost_forwards(t, y):
-    return y[-3] - 2
+    return y[-3] + z_0 - 2
 
 def sideways_lost(t, y):
     return sum(map(lambda x : x**2, y[-2:])) - 2
@@ -103,7 +116,7 @@ PROCNUM = 16
 BEAM = Slow_Beam
 RECOIL = True
 
-slower_magnet = pylcp.magField(get_interpolator([-10.5/cm_unit,0,0]))
+slower_magnet = pylcp.magField(get_interpolator([-10.5/cm_unit - z_0,0,0]))
 
 def evolve_beam_vel(v0, ham,magnets = slower_magnet,lasers = BEAM, laserargs = {'det_slower' : -175e6/hertz_unit}, time = 0, r = [0,0]):
     eq = pylcp.rateeq(lasers(**laserargs),magnets, ham,include_mag_forces=False,)
@@ -111,7 +124,7 @@ def evolve_beam_vel(v0, ham,magnets = slower_magnet,lasers = BEAM, laserargs = {
         eq.set_initial_pop(np.array([1., 0., 0., 0.]))
     except ValueError: # Quick and dirty solution to detect the two fermionic hamiltonians
         eq.set_initial_pop(np.array([0.5, 0.5, 0., 0., 0., 0., 0., 0.]))
-    eq.set_initial_position_and_velocity([-45.5/cm_unit,r[0],r[1]], v0)
+    eq.set_initial_position_and_velocity([-45.5/cm_unit - z_0,r[0],r[1]], v0)
     try:
         eq.evolve_motion([time, time + 50e-3/time_unit], events=[zero_condition, lost_forwards, sideways_lost, losing_backwards], progress_bar=False, max_step = 1e-3/time_unit, random_recoil = RECOIL)
     except ValueError:
