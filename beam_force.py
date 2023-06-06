@@ -4,10 +4,13 @@ dr = 0.01
 dv = 1/velocity_unit
 
 r = np.arange(-25, 0+dr, 2*dr)
-v = np.arange(0, 200/velocity_unit, 2*dv)
+v = np.arange(0, 400/velocity_unit, 2*dv)
 
 R, V = np.meshgrid(r, v)
 
+#upper = 1_309_864.72
+upper = 1_309_864.341 # GHz
+laser_det = (1_309_863.55 - upper)*1e9/hertz_unit
 #Rfull = np.array([sqrt(2)*R, sqrt(2)*R, np.zeros(R.shape)])
 #Vfull = np.array([sqrt(2)*V, sqrt(2)*V, np.zeros(V.shape)])
 
@@ -50,7 +53,7 @@ slower_magnet = pylcp.magField(get_interpolator([-10.5/cm_unit,0,0]))
 
 
 
-laserargs = {'det_slower' : -607.5e6/hertz_unit}
+laserargs = {'det_slower' : laser_det}
 eq = pylcp.rateeq(Slow_Beam(**laserargs),slower_magnet, Hamiltonians[114],include_mag_forces=False,)
 eq.generate_force_profile([R, np.zeros(R.shape), np.zeros(R.shape)],
                            [V, np.zeros(V.shape), np.zeros(V.shape)],

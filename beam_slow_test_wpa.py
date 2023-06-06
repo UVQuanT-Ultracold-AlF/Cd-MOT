@@ -175,7 +175,7 @@ if __name__ == "__main__":
     #         continue
     #     speeds.append(speed)
     #     times.append(time)
-    WPA_step = 32
+    WPA_step = 16
     WPAs = list(np.linspace(0, np.pi, WPA_step))*(MC_runtime//WPA_step);
     with Pool(processes=PROCNUM, initializer=init_worker, initargs=(progress,)) as pool:
         res = pool.map(MC_run, WPAs)

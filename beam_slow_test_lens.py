@@ -76,19 +76,19 @@ def No_Beams(*args, **kwargs):
 def Slow_Beam(det_slower, *args, pol = [0,1,1j], **kwargs):
     # pol /= sum(map(lambda x : x*np.conj(x), pol))
     return pylcp.laserBeams([
-        {'kvec':np.array([-1, 0., 0.]), 'pol':-1, 'delta':det_slower, 's':slower_s,'wb':slower_beam_width},
-        #{'kvec':np.array([0., 1., 0.]), 'pol': np.array([0., 1., 0.]), 'delta':-50e6/hertz_unit, 's':slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'},
-        #{'kvec':np.array([0.,-1., 0.]), 'pol': np.array([0., 1., 0.]), 'delta':-50e6/hertz_unit, 's':slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'},
-        #{'kvec':np.array([0., 0., 1.]), 'pol': np.array([0., 1., 0.]), 'delta':-50e6/hertz_unit, 's':slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'},
-        #{'kvec':np.array([0., 0.,-1.]), 'pol': np.array([0., 1., 0.]), 'delta':-50e6/hertz_unit, 's':slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'},
-        {'kvec':np.array([ 0.125, 0., 1.]), 'pol': np.array([0., 1., 0.]), 'delta':-125e6/hertz_unit, 's':1.5*slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'},
-        {'kvec':np.array([ 0.125, 0.,-1.]), 'pol': np.array([0., 1., 0.]), 'delta':-125e6/hertz_unit, 's':1.5*slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'},
-        {'kvec':np.array([-0.125, 0.,-1.]), 'pol': np.array([0., 1., 0.]), 'delta':-125e6/hertz_unit, 's':1.5*slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'},
-        {'kvec':np.array([-0.125, 0., 1.]), 'pol': np.array([0., 1., 0.]), 'delta':-125e6/hertz_unit, 's':1.5*slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'},
-        {'kvec':np.array([ 0.125, 1., 0.]), 'pol': np.array([0., 0., 1.]), 'delta':-125e6/hertz_unit, 's':1.5*slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'},
-        {'kvec':np.array([ 0.125,-1., 0.]), 'pol': np.array([0., 0., 1.]), 'delta':-125e6/hertz_unit, 's':1.5*slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'},
-        {'kvec':np.array([-0.125,-1., 0.]), 'pol': np.array([0., 0., 1.]), 'delta':-125e6/hertz_unit, 's':1.5*slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'},
-        {'kvec':np.array([-0.125, 1., 0.]), 'pol': np.array([0., 0., 1.]), 'delta':-125e6/hertz_unit, 's':1.5*slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'}
+        {'kvec':np.array([-1, 0., 0.]), 'pol':-1, 'delta':det_slower, 's':slower_s,'wb':slower_beam_width}#,
+        # {'kvec':np.array([0., 1., 0.]), 'pol': np.array([0., 0., 1.]), 'delta':-50e6/hertz_unit, 's':slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'},
+        # {'kvec':np.array([0.,-1., 0.]), 'pol': np.array([0., 0., 1.]), 'delta':-50e6/hertz_unit, 's':slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'},
+        # {'kvec':np.array([0., 0., 1.]), 'pol': np.array([0., 1., 0.]), 'delta':-50e6/hertz_unit, 's':slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'},
+        # {'kvec':np.array([0., 0.,-1.]), 'pol': np.array([0., 1., 0.]), 'delta':-50e6/hertz_unit, 's':slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'}#,
+        # {'kvec':np.array([ 0.1, 0., 1.]), 'pol': np.array([0., 1., 0.]), 'delta':-125e6/hertz_unit, 's':1.5*slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'},
+        # {'kvec':np.array([ 0.1, 0.,-1.]), 'pol': np.array([0., 1., 0.]), 'delta':-125e6/hertz_unit, 's':1.5*slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'},
+        # {'kvec':np.array([-0.1, 0.,-1.]), 'pol': np.array([0., 1., 0.]), 'delta':-125e6/hertz_unit, 's':1.5*slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'},
+        # {'kvec':np.array([-0.1, 0., 1.]), 'pol': np.array([0., 1., 0.]), 'delta':-125e6/hertz_unit, 's':1.5*slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'},
+        # {'kvec':np.array([ 0.1, 1., 0.]), 'pol': np.array([0., 0., 1.]), 'delta':-125e6/hertz_unit, 's':1.5*slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'},
+        # {'kvec':np.array([ 0.1,-1., 0.]), 'pol': np.array([0., 0., 1.]), 'delta':-125e6/hertz_unit, 's':1.5*slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'},
+        # {'kvec':np.array([-0.1,-1., 0.]), 'pol': np.array([0., 0., 1.]), 'delta':-125e6/hertz_unit, 's':1.5*slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'},
+        # {'kvec':np.array([-0.1, 1., 0.]), 'pol': np.array([0., 0., 1.]), 'delta':-125e6/hertz_unit, 's':1.5*slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'}
     ], beam_type=pylcp.gaussianBeam)
 
 z_0 = -35/cm_unit
@@ -392,6 +392,108 @@ if __name__ == "__main__":
     _, xbins, ybins, _ = axvel.hist2d(*(np.array(init_speeds_transf).T*velocity_unit), bins = [51, 51])
     axvel.set_xlabel("$v_x$ [m/s]")
     axvel.set_ylabel("$v_y$ [m/s]")
+    
+    axvx.hist(np.array(init_speeds_transf)[:,0]*velocity_unit, bins = xbins, orientation='vertical')
+    plt.setp(axvx.get_xticklabels(), visible = False)
+    plt.setp(axvx.get_yticklabels(), visible = False)
+    axvt.hist(np.array(init_speeds_transf)[:,1]*velocity_unit, bins = ybins, orientation='horizontal')
+    plt.setp(axvt.get_xticklabels(), visible = False)
+    plt.setp(axvt.get_yticklabels(), visible = False)
+    # axvt.set_xlim(axvt.get_xlim()[::-1])
+
+    fig.tight_layout()
+    
+    
+    fig = plt.figure(figsize= [12, 8])
+    
+    gs = gridspec.GridSpec(2, 1, figure=fig)
+    
+    gs0 = gs[0].subgridspec(1,3)
+    # ax1 = fig.add_subplot(gs0[:,0])
+    ax2 = fig.add_subplot(gs0[:,0])
+    #ax3 = fig.add_subplot(gs0[:,1])
+    
+    gstof = gs0[:,1].subgridspec(6,6)
+    axtofv = fig.add_subplot(gstof[:,:])
+    #axtofv = fig.add_subplot(gstof[1:,:])
+    #axtof = fig.add_subplot(gstof[0,:], sharex = axtofv)
+    
+    axcappos = fig.add_subplot(gs0[:,2])
+    
+    gs1 = gs[1].subgridspec(1,3)
+
+    axtime = fig.add_subplot(gs1[:,0])
+    # axisotope = fig.add_subplot(gs1[:,1])
+    axpos = fig.add_subplot(gs1[:,1])
+    # axvel= fig.add_subplot(gs1[:,2])
+    
+    gsvel = gs1[:,2].subgridspec(6,6)
+    axvel = fig.add_subplot(gsvel[1:,:-1])
+    axvx = fig.add_subplot(gsvel[0,:-1], sharex = axvel)
+    axvt = fig.add_subplot(gsvel[1:,-1], sharey = axvel)
+        
+    # fig, ax = plt.subplots(figsize = [12, 8])
+    # plt.plot(speeds*velocity_unit, np.linspace(0,10,speeds.size) , "x")
+    # ax1.hist(init_speeds[:,0]*velocity_unit, bins = np.linspace(-4,300,305))
+
+    # # ax2.hist(transformed_speeds*velocity_unit, bins = np.linspace(-4,300,305), label = "Transformed final velocities")
+    # ax1.set_ylabel("Initial Counts [1]")
+    # ax1.set_xlabel("$v_x$ [m/s]")
+    # ax.legend()
+    textstr = '\n'.join([f"Runs: {MC_runtime}", f"Success: {init_speeds[:,0].size}", f"Measured: {times.size}"])
+    props = dict(boxstyle='round')
+    props2 = dict(boxstyle='round', fc = "white", alpha = 0.75)
+    props = props2
+    ax2.text(0.05, 0.95, textstr, transform=ax2.transAxes, fontsize=14, verticalalignment='top', bbox=props)
+    
+    
+    # plt.plot(speeds*velocity_unit, np.linspace(0,10,speeds.size) , "x")
+    ax2.hist(init_speeds_no_none[:,0]*velocity_unit, bins = np.linspace(-4,300,305), label = "Initial velocities")
+    ax2.hist(speeds*velocity_unit, bins = np.linspace(-4,300,305), label = "Final velocities")
+    # ax2.hist(transformed_speeds*velocity_unit, bins = np.linspace(-4,300,305), label = "Transformed final velocities")
+    ax2.set_ylabel("Counts [1]")
+    ax2.set_xlabel("$v_x$ [m/s]")
+    ax2.legend()
+    # textstr = '\n'.join([f"Runs: {MC_runtime}", f"Measured: {times.size}"])
+    # props = dict(boxstyle='round')
+    # ax2.text(0.05, 0.95, textstr, transform=ax2.transAxes, fontsize=14, verticalalignment='top', bbox=props)
+
+    
+    # plt.plot(speeds*velocity_unit, np.linspace(0,10,speeds.size) , "x")
+    
+    axtofv.hist2d(times*time_unit*1e3, speeds*velocity_unit, bins = [np.linspace(0,25,100), np.linspace(-4,200,305)])
+    axtofv.plot(np.linspace(0.1,25,100), 0.455/(1e-3*np.linspace(0.1,25,100)), c = 'white')
+    axtofv.set_ylabel("$v_x$ [m/s]")
+    axtofv.set_xlabel("Time of flight [ms]")
+
+    #axtof.hist(times*time_unit*1e3, bins = 100)
+    #plt.setp(axtof.get_xticklabels(), visible = False)
+    #plt.setp(axtof.get_yticklabels(), visible = False)
+
+    # axisotope.hist(iso_samp, bins = [106,107,108,109,110,111,112,113,114,115,116,117])
+    # axisotope.set_xlabel("Isotope")
+    # axisotope.set_ylabel("Count [1]")
+    
+    axtime.hist(np.array(t_samp)*time_unit*1e3, bins = 100)
+    axtime.set_xlabel("Time [ms]")
+    axtime.set_ylabel("Count [1]")
+    
+    
+    axpos.hist2d(*np.array(pos_samp)[:,1:].T, bins = [51, 51])
+    axpos.set_xlabel("y [cm]")
+    axpos.set_ylabel("z [cm]")
+    axpos.text(0.05, 0.95, "Start pos for sampled atoms", transform=axpos.transAxes, fontsize=14, verticalalignment='top', bbox = props2)
+    
+    
+    axcappos.hist2d(*np.array(capstart_poss)[:,1:].T, bins = [51, 51])
+    axcappos.set_xlabel("y [cm]")
+    axcappos.set_ylabel("z [cm]")
+    axcappos.text(0.05, 0.95, "Start pos for measured atoms", transform=axcappos.transAxes, fontsize=14, verticalalignment='top', bbox = props2)
+    
+    init_speeds_transf = np.array(list(map(lambda x: [x[0], np.sqrt(x[1]**2 + x[2]**2)], init_speeds)))
+    _, xbins, ybins, _ = axvel.hist2d(*(init_speeds_transf.T*velocity_unit), bins = [51, 51])
+    axvel.set_xlabel("$v_x$ [m/s]")
+    axvel.set_ylabel("$v_t$ [m/s]")
     
     axvx.hist(np.array(init_speeds_transf)[:,0]*velocity_unit, bins = xbins, orientation='vertical')
     plt.setp(axvx.get_xticklabels(), visible = False)

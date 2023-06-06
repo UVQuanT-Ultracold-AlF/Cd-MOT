@@ -7,6 +7,12 @@ import matplotlib.gridspec as gridspec
 
 gt = lambda x, y : ft.reduce(lambda a, b : a and b, [i >= j for i,j in zip(x,y)])
 
+convert_to_frequency = lambda f0, v: f0*(1-np.sqrt((1-v*velocity_unit/consts.c)/(1+v*velocity_unit/consts.c)))
+
+vel_dist_data = np.array([[50,0],[60,0.05],[70,0.1],[80,0.2],[90,0.3]])
+
+vel_dist = lambda x : np.interp(x, *(vel_dist_data.T))
+
 def rej_samp(func = lambda _ : 1, rand_x = lambda : rand.uniform(0,1), rand_y = lambda : 0, comp_func = lambda x, y : x >= y):
     while True:
         x, y = rand_x(), rand_y()
@@ -79,7 +85,22 @@ def get_interpolator(pos):
 def No_Beams(*args, **kwargs):
     return pylcp.laserBeams([], beam_type=pylcp.gaussianBeam)
 
-s_slower = 1
+
+upper = 1_309_864.341 # GHz
+laser_det = (1_309_863.55 - upper)*1e9/hertz_unit
+delay = 0.5e-3
+def chirp(t):
+    if (t < delay/time_unit):
+        return convert_to_frequency(upper*1e9/hertz_unit, -200/velocity_unit)
+    if (t < (delay + 2.5e-3)/time_unit):
+        return convert_to_frequency(upper*1e9/hertz_unit,-(200-(t-delay/time_unit)*0.3*time_unit*100/(2.5e-3*0.2))/velocity_unit)
+    return convert_to_frequency(upper*1e9/hertz_unit, -200/velocity_unit)
+
+laser_det = convert_to_frequency(upper*1e9/hertz_unit, -200/velocity_unit)
+detuning = laser_det
+
+s_slower = lambda t : 0.5 if t*time_unit <  delay + 2.5e-3 else 0
+s_slower = 0.5
 def Slow_Beam(det_slower, *args, pol = [0,1,1j], **kwargs):
     # pol /= sum(map(lambda x : x*np.conj(x), pol))
     pol_slower = np.pi/4
@@ -106,13 +127,13 @@ sideways_lost.terminal = True
 losing_backwards.terminal = True
 
 
-PROCNUM = 16   
+PROCNUM = 14
 BEAM = Slow_Beam
 RECOIL = True
-upper = 1_309_864.341 # GHz
-laser_det = (1_309_863.55 - upper)*1e9/hertz_unit
+MC_runtime = 100_000
 
 slower_magnet = pylcp.magField(get_interpolator([-10.5/cm_unit,0,0]))
+slower_magnet = pylcp.constantMagneticField([0,0,0])
 
 def evolve_beam_vel(v0, ham,magnets = slower_magnet,lasers = BEAM, laserargs = {'det_slower' : -175e6/hertz_unit}, time = 0, r = [0,0]):
     eq = pylcp.rateeq(lasers(**laserargs),magnets, ham,include_mag_forces=False,)
@@ -122,7 +143,7 @@ def evolve_beam_vel(v0, ham,magnets = slower_magnet,lasers = BEAM, laserargs = {
         eq.set_initial_pop(np.array([0.5, 0.5, 0., 0., 0., 0., 0., 0.]))
     eq.set_initial_position_and_velocity([-45.5/cm_unit,r[0],r[1]], v0)
     try:
-        eq.evolve_motion([time, time + 50e-3/time_unit], events=[zero_condition, lost_forwards, sideways_lost, losing_backwards], progress_bar=False, max_step = 1e-3/time_unit, random_recoil = RECOIL)
+        eq.evolve_motion([time, time + 50e-3/time_unit], events=[zero_condition, lost_forwards, sideways_lost, losing_backwards], progress_bar=False, max_step = 0.1e-3/time_unit, random_recoil = RECOIL)
     except ValueError:
         return [None]*5
     # Rejection conditions
@@ -141,7 +162,6 @@ def init_worker(pgr):
     global progress
     progress = pgr
 
-MC_runtime = 500_000
 
 def MC_run(_):
     global progress
@@ -152,7 +172,7 @@ def MC_run(_):
         print(f"{cached_progress}/{MC_runtime}: {100*cached_progress/MC_runtime:.2f}%", end = '\r')
     v0 = next(samp_vel)
     # init_speeds.append(v0)
-    speed, time, trans_speed, final_speed, poss = evolve_beam_vel(v0, Hamiltonians[next(samp_isotope)], laserargs={'det_slower' : laser_det}, time = next(samp_time), r = next(samp_pos))
+    speed, time, trans_speed, final_speed, poss = evolve_beam_vel(v0, Hamiltonians[next(samp_isotope)], laserargs={'det_slower' : detuning}, time = next(samp_time), r = next(samp_pos))
     if speed is None:
         return [None]*6
     if (speed < 0):
@@ -275,7 +295,8 @@ if __name__ == "__main__":
     
     # plt.plot(speeds*velocity_unit, np.linspace(0,10,speeds.size) , "x")
     
-    axtofv.hist2d(times*time_unit*1e3, speeds*velocity_unit, bins = [np.linspace(0,15,100), np.linspace(-4,200,305)])
+    axtofv.hist2d(times*time_unit*1e3, speeds*velocity_unit, bins = [np.linspace(0,25,100), np.linspace(-4,200,305)])
+    axtofv.plot(np.linspace(0.1,25,100), 0.455/(1e-3*np.linspace(0.1,25,100)), c = 'white')
     axtofv.set_ylabel("$v_x$ [m/s]")
     axtofv.set_xlabel("Time of flight [ms]")
 
