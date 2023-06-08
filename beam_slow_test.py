@@ -42,7 +42,7 @@ capture_pdf = lambda x : norm.pdf(x, mean, std)
 
 samp_isotope = fake_samp(114) #rej_samp(func = lambda x : abundance_data[x], rand_x = lambda : rand.randint(106,116), rand_y = lambda : rand.uniform(0,0.2873))
 # samp_vel = rej_samp(func = lambda x : capture_pdf(x[0]), rand_x = lambda : [rand.uniform(100/velocity_unit,200/velocity_unit), 0, 0], rand_y = lambda : rand.uniform(0,capture_pdf(mean)))
-samp_v0 = cdf_samp(capture_cdf, [0,300/velocity_unit]) # rej_samp(func = lambda x : capture_pdf(x), rand_x = lambda : rand.uniform(100/velocity_unit,200/velocity_unit), rand_y = lambda : rand.uniform(0,capture_pdf(mean)))
+samp_v0 = rej_samp(func = vel_dist, rand_x = lambda : rand.uniform(np.min(vel_dist_data[:,0]),np.max(vel_dist_data[:,0])), rand_y = lambda : rand.uniform(0,np.max(vel_dist_data[:,1]))) #cdf_samp(capture_cdf, [0,300/velocity_unit]) # rej_samp(func = lambda x : capture_pdf(x), rand_x = lambda : rand.uniform(100/velocity_unit,200/velocity_unit), rand_y = lambda : rand.uniform(0,capture_pdf(mean)))
 samp_vt = cdf_samp(transverse_cdf, [-transverse_cutoff, transverse_cutoff]) # rej_samp(func = lambda x : transverse_pdf(abs(x)), rand_x = lambda : rand.uniform(-transverse_cutoff,transverse_cutoff), rand_y = lambda : rand.uniform(0,transverse_pdf(transverse_cutoff)))
 samp_angle = rej_samp(rand_x = lambda : rand.uniform(0,2*np.pi))
 samp_vel = rej_samp(func = lambda x : x, rand_x = lambda : [next(samp_v0), *((lambda x, a : [x*np.sin(a), x*np.cos(a)])(next(samp_vt), next(samp_angle)))], rand_y = lambda : 0, comp_func = lambda x ,y : abs(np.arctan(np.sqrt(x[1]**2 + x[2]**2)/x[0])) < 75e-3 if abs(x[0]) > 1e-10 else False)
@@ -106,7 +106,7 @@ sideways_lost.terminal = True
 losing_backwards.terminal = True
 
 
-PROCNUM = 16   
+PROCNUM = 15
 BEAM = Slow_Beam
 RECOIL = True
 upper = 1_309_864.341 # GHz
@@ -318,6 +318,107 @@ if __name__ == "__main__":
 
     fig.tight_layout()
 
+
+    fig = plt.figure(figsize= [12, 8])
+    
+    gs = gridspec.GridSpec(2, 1, figure=fig)
+    
+    gs0 = gs[0].subgridspec(1,3)
+    # ax1 = fig.add_subplot(gs0[:,0])
+    ax2 = fig.add_subplot(gs0[:,0])
+    #ax3 = fig.add_subplot(gs0[:,1])
+    
+    gstof = gs0[:,1].subgridspec(6,6)
+    axtofv = fig.add_subplot(gstof[:,:])
+    #axtofv = fig.add_subplot(gstof[1:,:])
+    #axtof = fig.add_subplot(gstof[0,:], sharex = axtofv)
+    
+    axcappos = fig.add_subplot(gs0[:,2])
+    
+    gs1 = gs[1].subgridspec(1,3)
+
+    axtime = fig.add_subplot(gs1[:,0])
+    # axisotope = fig.add_subplot(gs1[:,1])
+    axpos = fig.add_subplot(gs1[:,1])
+    # axvel= fig.add_subplot(gs1[:,2])
+    
+    gsvel = gs1[:,2].subgridspec(6,6)
+    axvel = fig.add_subplot(gsvel[1:,:-1])
+    axvx = fig.add_subplot(gsvel[0,:-1], sharex = axvel)
+    axvt = fig.add_subplot(gsvel[1:,-1], sharey = axvel)
+        
+    # fig, ax = plt.subplots(figsize = [12, 8])
+    # plt.plot(speeds*velocity_unit, np.linspace(0,10,speeds.size) , "x")
+    # ax1.hist(init_speeds[:,0]*velocity_unit, bins = np.linspace(-4,300,305))
+
+    # # ax2.hist(transformed_speeds*velocity_unit, bins = np.linspace(-4,300,305), label = "Transformed final velocities")
+    # ax1.set_ylabel("Initial Counts [1]")
+    # ax1.set_xlabel("$v_x$ [m/s]")
+    # ax.legend()
+    textstr = '\n'.join([f"Runs: {MC_runtime}", f"Success: {init_speeds[:,0].size}", f"Measured: {times.size}"])
+    props = dict(boxstyle='round')
+    props2 = dict(boxstyle='round', fc = "white", alpha = 0.75)
+    props = props2
+    ax2.text(0.05, 0.95, textstr, transform=ax2.transAxes, fontsize=14, verticalalignment='top', bbox=props)
+    
+    
+    # plt.plot(speeds*velocity_unit, np.linspace(0,10,speeds.size) , "x")
+    ax2.hist(init_speeds_no_none[:,0]*velocity_unit, bins = np.linspace(-4,300,305), label = "Initial velocities")
+    ax2.hist(speeds*velocity_unit, bins = np.linspace(-4,300,305), label = "Final velocities")
+    # ax2.hist(transformed_speeds*velocity_unit, bins = np.linspace(-4,300,305), label = "Transformed final velocities")
+    ax2.set_ylabel("Counts [1]")
+    ax2.set_xlabel("$v_x$ [m/s]")
+    ax2.legend()
+    # textstr = '\n'.join([f"Runs: {MC_runtime}", f"Measured: {times.size}"])
+    # props = dict(boxstyle='round')
+    # ax2.text(0.05, 0.95, textstr, transform=ax2.transAxes, fontsize=14, verticalalignment='top', bbox=props)
+
+    
+    # plt.plot(speeds*velocity_unit, np.linspace(0,10,speeds.size) , "x")
+    
+    axtofv.hist2d(times*time_unit*1e3, speeds*velocity_unit, bins = [np.linspace(0,25,100), np.linspace(-4,200,305)])
+    axtofv.plot(np.linspace(0.1,25,100), 0.455/(1e-3*np.linspace(0.1,25,100)), c = 'white')
+    axtofv.set_ylabel("$v_x$ [m/s]")
+    axtofv.set_xlabel("Time of flight [ms]")
+
+    #axtof.hist(times*time_unit*1e3, bins = 100)
+    #plt.setp(axtof.get_xticklabels(), visible = False)
+    #plt.setp(axtof.get_yticklabels(), visible = False)
+
+    # axisotope.hist(iso_samp, bins = [106,107,108,109,110,111,112,113,114,115,116,117])
+    # axisotope.set_xlabel("Isotope")
+    # axisotope.set_ylabel("Count [1]")
+    
+    axtime.hist(np.array(t_samp)*time_unit*1e3, bins = 100)
+    axtime.set_xlabel("Time [ms]")
+    axtime.set_ylabel("Count [1]")
+    
+    
+    axpos.hist2d(*np.array(pos_samp)[:,1:].T, bins = [51, 51])
+    axpos.set_xlabel("y [cm]")
+    axpos.set_ylabel("z [cm]")
+    axpos.text(0.05, 0.95, "Start pos for sampled atoms", transform=axpos.transAxes, fontsize=14, verticalalignment='top', bbox = props2)
+    
+    
+    axcappos.hist2d(*np.array(capstart_poss)[:,1:].T, bins = [51, 51])
+    axcappos.set_xlabel("y [cm]")
+    axcappos.set_ylabel("z [cm]")
+    axcappos.text(0.05, 0.95, "Start pos for measured atoms", transform=axcappos.transAxes, fontsize=14, verticalalignment='top', bbox = props2)
+    
+    init_speeds_transf = np.array(list(map(lambda x: [x[0], np.sqrt(x[1]**2 + x[2]**2)], init_speeds)))
+    _, xbins, ybins, _ = axvel.hist2d(*(init_speeds_transf.T*velocity_unit), bins = [51, 51])
+    axvel.set_xlabel("$v_x$ [m/s]")
+    axvel.set_ylabel("$v_t$ [m/s]")
+    
+    axvx.hist(np.array(init_speeds_transf)[:,0]*velocity_unit, bins = xbins, orientation='vertical')
+    plt.setp(axvx.get_xticklabels(), visible = False)
+    plt.setp(axvx.get_yticklabels(), visible = False)
+    axvt.hist(np.array(init_speeds_transf)[:,1]*velocity_unit, bins = ybins, orientation='horizontal')
+    plt.setp(axvt.get_xticklabels(), visible = False)
+    plt.setp(axvt.get_yticklabels(), visible = False)
+    # axvt.set_xlim(axvt.get_xlim()[::-1])
+
+    fig.tight_layout()
 
 #     fig = plt.figure(figsize= [12, 8])
     

@@ -36,7 +36,7 @@ transverse_cutoff = np.tan(35e-3)*200/velocity_unit
 
 samp_isotope = fake_samp(114) # rej_samp(func = lambda x : abundance_data[x], rand_x = lambda : rand.randint(106,116), rand_y = lambda : rand.uniform(0,0.2873))
 # samp_vel = rej_samp(func = lambda x : capture_pdf(x[0]), rand_x = lambda : [rand.uniform(100/velocity_unit,200/velocity_unit), 0, 0], rand_y = lambda : rand.uniform(0,capture_pdf(mean)))
-samp_v0 = cdf_samp(capture_cdf, [0,300/velocity_unit]) # rej_samp(func = lambda x : capture_pdf(x), rand_x = lambda : rand.uniform(100/velocity_unit,200/velocity_unit), rand_y = lambda : rand.uniform(0,capture_pdf(mean)))
+samp_v0 = rej_samp(func = vel_dist, rand_x = lambda : rand.uniform(np.min(vel_dist_data[:,0]),np.max(vel_dist_data[:,0])), rand_y = lambda : rand.uniform(0,np.max(vel_dist_data[:,1]))) #cdf_samp(capture_cdf, [0,300/velocity_unit]) # rej_samp(func = lambda x : capture_pdf(x), rand_x = lambda : rand.uniform(100/velocity_unit,200/velocity_unit), rand_y = lambda : rand.uniform(0,capture_pdf(mean)))
 samp_vt =  cdf_samp(transverse_cdf, [-transverse_cutoff, transverse_cutoff]) # rej_samp(func = lambda x : transverse_pdf(abs(x)), rand_x = lambda : rand.uniform(-transverse_cutoff,transverse_cutoff), rand_y = lambda : rand.uniform(0,transverse_pdf(transverse_cutoff)))
 samp_angle = rej_samp(rand_x = lambda : rand.uniform(0,2*np.pi))
 samp_vel = rej_samp(func = lambda x : x, rand_x = lambda : [next(samp_v0), *((lambda x, a : [x*np.sin(a), x*np.cos(a)])(next(samp_vt), next(samp_angle)))], rand_y = lambda : 0, comp_func = lambda x ,y : abs(np.arctan(np.sqrt(x[1]**2 + x[2]**2)/x[0])) < 75e-3 if abs(x[0]) > 1e-10 else False)
@@ -76,11 +76,11 @@ def No_Beams(*args, **kwargs):
 def Slow_Beam(det_slower, *args, pol = [0,1,1j], **kwargs):
     # pol /= sum(map(lambda x : x*np.conj(x), pol))
     return pylcp.laserBeams([
-        {'kvec':np.array([-1, 0., 0.]), 'pol':-1, 'delta':det_slower, 's':slower_s,'wb':slower_beam_width}#,
-        # {'kvec':np.array([0., 1., 0.]), 'pol': np.array([0., 0., 1.]), 'delta':-50e6/hertz_unit, 's':slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'},
-        # {'kvec':np.array([0.,-1., 0.]), 'pol': np.array([0., 0., 1.]), 'delta':-50e6/hertz_unit, 's':slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'},
-        # {'kvec':np.array([0., 0., 1.]), 'pol': np.array([0., 1., 0.]), 'delta':-50e6/hertz_unit, 's':slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'},
-        # {'kvec':np.array([0., 0.,-1.]), 'pol': np.array([0., 1., 0.]), 'delta':-50e6/hertz_unit, 's':slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'}#,
+        {'kvec':np.array([-1, 0., 0.]), 'pol':-1, 'delta':det_slower, 's':slower_s,'wb':slower_beam_width},
+        {'kvec':np.array([0., 1., 0.]), 'pol': np.array([0., 0., 1.]), 'delta':-50e6/hertz_unit, 's':slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'},
+        {'kvec':np.array([0.,-1., 0.]), 'pol': np.array([0., 0., 1.]), 'delta':-50e6/hertz_unit, 's':slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'},
+        {'kvec':np.array([0., 0., 1.]), 'pol': np.array([0., 1., 0.]), 'delta':-50e6/hertz_unit, 's':slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'},
+        {'kvec':np.array([0., 0.,-1.]), 'pol': np.array([0., 1., 0.]), 'delta':-50e6/hertz_unit, 's':slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'}#,
         # {'kvec':np.array([ 0.1, 0., 1.]), 'pol': np.array([0., 1., 0.]), 'delta':-125e6/hertz_unit, 's':1.5*slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'},
         # {'kvec':np.array([ 0.1, 0.,-1.]), 'pol': np.array([0., 1., 0.]), 'delta':-125e6/hertz_unit, 's':1.5*slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'},
         # {'kvec':np.array([-0.1, 0.,-1.]), 'pol': np.array([0., 1., 0.]), 'delta':-125e6/hertz_unit, 's':1.5*slower_s,'wb':slower_beam_width, 'pol_coord' : 'cartesian'},

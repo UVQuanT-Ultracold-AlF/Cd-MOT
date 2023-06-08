@@ -59,10 +59,15 @@ eq.generate_force_profile([R, np.zeros(R.shape), np.zeros(R.shape)],
                            [V, np.zeros(V.shape), np.zeros(V.shape)],
                            name='Frad', progress_bar=True)
 
-plt.figure()
-plt.imshow(eq.profile['Frad'].F[0], origin='lower',
-           extent=(np.amin(r), np.amax(r),
+fig, ax = plt.subplots()
+im = ax.imshow(-1*eq.profile['Frad'].F[0]*hbar*k*91e6/1.89301e-25/1e3, origin='lower',
+           extent=(np.amin(r)/100, np.amax(r)/100,
                    np.amin(v*velocity_unit)-dv/2, np.amax(v*velocity_unit)-dv/2),
-           aspect='auto', cmap='gnuplot')
-cb1 = plt.colorbar()
+           aspect='auto', cmap='viridis')
+plt.text(-0.24,390, "$\Delta = -8.7\\;\\Gamma$\n$I = 0.3\\;I_{sat}$", verticalalignment='top', color='w')
+ax.set_xlabel("Position [m]")
+ax.set_ylabel("Velocity [m/s]")
+cb1 = plt.colorbar(im)
+cb1.set_label("Acceleration [$10^3$ m/s$^2$]")
+plt.tight_layout()
 plt.show()

@@ -77,6 +77,13 @@ MOT_s = 2
 cm_unit = 1
 
 
+# read in initial vel_dist
+vel_dist_raw_data = np.loadtxt("./csv/ChirpedSlowing_112_initialDistribution.dat")
+vel_dist_raw_data = vel_dist_raw_data[vel_dist_raw_data[:,1].argsort()]
+
+vel_dist_data = np.array([[i/velocity_unit,np.sum(vel_dist_raw_data[:,2], where=vel_dist_raw_data[:,1] == i)] for i in np.unique(vel_dist_raw_data[:,1])])
+vel_dist = lambda x : np.interp(x, *(vel_dist_data.T))
+
 # Some parameters for the MOT
 # Mass taken from IAEA
 mass = {106 : 105.9064598/amu_unit, 108 : 107.9041836/amu_unit, 110 : 109.9030075/amu_unit, 111 : 110.9041838/amu_unit, 112 : 111.90276390/amu_unit, 113 : 112.90440811/amu_unit, 114 : 113.90336500/amu_unit, 116 : 115.90476323/amu_unit}
