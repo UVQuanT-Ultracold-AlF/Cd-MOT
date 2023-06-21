@@ -22,9 +22,9 @@ def MC_run(args):
     h = args[0]
     print(f"{det*hertz_unit/1e6:.2f} MHz",end='\r')
     eq = pylcp.rateeq(LASER(det, -700e6/hertz_unit + isotope_shifts[112]),permMagnetsPylcp,Hamiltonians[h], include_mag_forces=False)
-    pos = next(samp_pos)
-    vel = next(samp_vel)
     def single_run():
+        pos = next(samp_pos)
+        vel = next(samp_vel)
         eq.set_initial_pop(np.array([1,0,0,0]))
         eq.set_initial_position_and_velocity(np.array([-45.5,pos[0],pos[1]]),vel)
         sol = eq.evolve_motion([0., 25e-3/time_unit], events=[captured_condition,lost_condition,backwards_lost],
@@ -37,9 +37,9 @@ def MC_run_noslow(args):
     h = args[0]
     print(f"{det*hertz_unit/1e6:.2f} MHz",end='\r')
     eq = pylcp.rateeq(LASER_NOSLOW(det, -700e6/hertz_unit + isotope_shifts[112]),permMagnetsPylcp,Hamiltonians[h], include_mag_forces=False)
-    pos = next(samp_pos)
-    vel = next(samp_vel)
     def single_run():
+        pos = next(samp_pos)
+        vel = next(samp_vel)
         eq.set_initial_pop(np.array([1,0,0,0]))
         eq.set_initial_position_and_velocity(np.array([-45.5,pos[0],pos[1]]),vel)
         sol = eq.evolve_motion([0., 25e-3/time_unit], events=[captured_condition,lost_condition,backwards_lost],
@@ -58,7 +58,7 @@ params = np.array(np.meshgrid(list(Hamiltonians.keys())), MOT_range).T.reshape([
 if __name__ == "__main__":
     __spec__ = None
     import multiprocessing as mp
-
+    progress = Value('i', 0)
     with mp.Pool(processes=16) as pool:
         data = pool.map_async(MC_run, params)    
         noslow_data = pool.map(MC_run_noslow, params)

@@ -20,21 +20,33 @@ Slow_range = np.linspace(-1400e6/hertz_unit, 600e6/hertz_unit,51)
 # Slow_range = [-700e6/hertz_unit]
 Beams = [MOT_and_Slow_Beams, MOT_and_Slow_Beams_sig_2, MOT_and_Slow_Beams_lin]
 
+def single_run(eq):
+    pos = next(samp_pos)
+    vel = next(samp_vel)
+    eq.set_initial_pop(np.array([1,0,0,0]))
+    eq.set_initial_position_and_velocity(np.array([-45.5,pos[0],pos[1]]),vel)
+    sol = eq.evolve_motion([0., 25e-3/time_unit], events=[captured_condition,lost_condition,backwards_lost],
+                    max_step=m_step)
+    return 0 if isCaptured(sol) < 0 else 1/MC_RUNS
+
+def init_worker(pgr):
+    global progress
+    progress = pgr
+
+total_runtime = MC_RUNS*len(Slow_range)*len(Beams)
 
 def MC_run(args):
+    global progress
+    with progress.get_lock():
+        progress.value += 1
+        cached_progress = progress.value
+    if cached_progress % 100 == 0:
+        print(f"{cached_progress}/{total_runtime}: {100*cached_progress/total_runtime:.2f}%", end = '\r')
     det = args[0]
     beam = args[1]
-    print(f"{det*hertz_unit/1e6:.2f} MHz",end='\r')
+    # print(f"{det*hertz_unit/1e6:.2f} MHz")
     eq = pylcp.rateeq(beam(-175e6/hertz_unit + isotope_shifts[112], det + isotope_shifts[112]),permMagnetsPylcp,Hamiltonians[112], include_mag_forces=False)
-    def single_run():
-        pos = next(samp_pos)
-        vel = next(samp_vel)
-        eq.set_initial_pop(np.array([1,0,0,0]))
-        eq.set_initial_position_and_velocity(np.array([-45.5,pos[0],pos[1]]),vel)
-        sol = eq.evolve_motion([0., 25e-3/time_unit], events=[captured_condition,lost_condition,backwards_lost],
-                      max_step=m_step)
-        return 0 if isCaptured(sol) < 0 else 1/MC_RUNS
-    return sum([single_run() for i in range(MC_RUNS)])
+    return single_run(eq)
 
 def plot_slow(data):
     
@@ -47,14 +59,15 @@ def plot_slow(data):
     fig.tight_layout()
     plt.show()
 
-params = np.array(np.meshgrid(Slow_range, Beams)).T.reshape([-1,2])
+params = np.array(np.meshgrid(Slow_range, Beams, range(MC_RUNS))).T.reshape([-1,3])
 
 if __name__ == "__main__":
     __spec__ = None
     import multiprocessing as mp
+    progress = mp.Value('i', 0)
 
-    with mp.Pool(processes=MC_CORES) as pool:
-        data = np.array(pool.map(MC_run, params)).reshape([len(Slow_range), len(Beams)]).T
+    with mp.Pool(processes=MC_CORES, initializer=init_worker, initargs=(progress,)) as pool:
+        data = np.sum(np.array(pool.map(MC_run, params)).reshape([len(Slow_range), len(Beams), MC_RUNS]), axis = -1).T
     
     np.save("./out.npy", data)
     #plot_slow(data)
