@@ -13,9 +13,12 @@ samp_vel = rej_samp(func = lambda x : x, rand_x = lambda : [next(samp_v0), *((la
 samp_time = cdf_samp(lambda x : norm.cdf(x, 1e-3/time_unit,0.5e-3/time_unit), [0/time_unit, 2.5/time_unit]) # rej_samp(func = lambda x : norm.pdf(x, 1e-3/time_unit,0.5e-3/time_unit), rand_x = lambda : rand.uniform(0,2.5e-3/time_unit), rand_y = lambda : rand.uniform(0,norm.pdf(1e-3/time_unit, 1e-3/time_unit,0.5e-3/time_unit)))
 samp_pos = rej_samp(func = lambda r : 1 if sum(map(lambda x : x**2, r)) < (2e-1)**2 else 0, rand_x = lambda : (rand.uniform(-2e-1,2e-1),rand.uniform(-2e-1,2e-1)), rand_y = lambda : 0.5)
 
-
-MC_RUNS = int(argv[1])
-MC_CORES = int(argv[2])
+if __name__ == "__main__":
+    MC_RUNS = int(argv[1])
+    MC_CORES = int(argv[2])
+else:
+    MC_RUNS = 1
+    MC_CORES = 1
 Slow_range = np.linspace(-1400e6/hertz_unit, 600e6/hertz_unit,51)
 # Slow_range = [-700e6/hertz_unit]
 Beams = [MOT_and_Slow_Beams, MOT_and_Slow_Beams_sig_2, MOT_and_Slow_Beams_lin]
@@ -29,11 +32,11 @@ def single_run(eq):
                     max_step=m_step)
     return 0 if isCaptured(sol) < 0 else 1/MC_RUNS
 
-def init_worker(pgr):
-    global progress
+def init_worker(pgr, t_r, MC_Runs):
+    global progress, total_runtime, MC_RUNS
     progress = pgr
-
-total_runtime = MC_RUNS*len(Slow_range)*len(Beams)
+    total_runtime = t_r
+    MC_RUNS = MC_Runs
 
 def MC_run(args):
     global progress
@@ -51,9 +54,9 @@ def MC_run(args):
 def plot_slow(data):
     
     fig, ax = plt.subplots()
-    ax.errorbar(Slow_range*hertz_unit/1e6, data[0], yerr = np.sqrt(data[0]/MC_RUNS), fmt = 'bx', label = "$\\sigma_-$")
-    ax.errorbar(Slow_range*hertz_unit/1e6, data[1], yerr = np.sqrt(data[0]/MC_RUNS), fmt = 'gx', label = "$\\sigma_+$")
-    ax.errorbar(Slow_range*hertz_unit/1e6, data[2], yerr = np.sqrt(data[0]/MC_RUNS), fmt = 'rx', label = "linear")
+    ax.errorbar(Slow_range*hertz_unit/1e6, data[0], yerr = np.sqrt(data[0]/MC_RUNS), fmt = 'bx-', label = "$\\sigma_-$", capsize = 4)
+    ax.errorbar(Slow_range*hertz_unit/1e6, data[1], yerr = np.sqrt(data[0]/MC_RUNS), fmt = 'gx-', label = "$\\sigma_+$", capsize = 4)
+    ax.errorbar(Slow_range*hertz_unit/1e6, data[2], yerr = np.sqrt(data[0]/MC_RUNS), fmt = 'rx-', label = "linear", capsize = 4)
     ax.set_ylabel("MOT Signal [a.u.]")
     ax.set_xlabel("Slower Detuning [MHz]")
     fig.tight_layout()
@@ -64,9 +67,10 @@ params = np.array(np.meshgrid(Slow_range, Beams, range(MC_RUNS))).T.reshape([-1,
 if __name__ == "__main__":
     __spec__ = None
     import multiprocessing as mp
+    total_runtime = MC_RUNS*len(Slow_range)*len(Beams)
     progress = mp.Value('i', 0)
 
-    with mp.Pool(processes=MC_CORES, initializer=init_worker, initargs=(progress,)) as pool:
+    with mp.Pool(processes=MC_CORES, initializer=init_worker, initargs=(progress,total_runtime, MC_RUNS)) as pool:
         data = np.sum(np.array(pool.map(MC_run, params)).reshape([len(Slow_range), len(Beams), MC_RUNS]), axis = -1).T
     
     np.save("./out.npy", data)
