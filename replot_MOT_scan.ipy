@@ -1,8 +1,79 @@
+mean = 150/velocity_unit
+std = 30/velocity_unit
+
+capture_cdf = lambda x : norm.cdf(x, mean, std)
+
+def convert_to_captured(roots, signs):
+    global capture_cdf
+    captured_percentage = 0
+    for root_low, root_high, sign in zip(roots[:-1], roots[1:],signs[1:-1]):
+        captured_percentage += sign*(capture_cdf (root_high) - capture_cdf (root_low))
+    return captured_percentage
+
+to_captured = lambda arr : np.array([convert_to_captured(*x) for x in arr])
+
+def get_cap_range(roots, signs):
+    for root_low, root_high, sign in zip(roots[:-1], roots[1:],signs[1:-1]):
+        if sign:
+            return [root_low, root_high]
+    return [0,0]
+    
+to_cap_range = lambda arr : np.array([get_cap_range(*d) for d in arr])
+
+fig, axs =  plt.subplots(2,len(MOT_capture_data.keys())//2,figsize = [25,10], sharex=True, sharey=True)
+axs = axs.flatten()
+for i, c_data in enumerate(MOT_capture_data.items()):
+    # axs[i].plot(MOT_range*hertz_unit/1e6, to_captured(c_data[1]))
+    axs[i].fill_between(MOT_range*hertz_unit/1e6, to_cap_range(c_data[1])[:,0]*velocity_unit, to_cap_range(c_data[1])[:,1]*velocity_unit, step='mid')
+    axs[i].set_title(c_data[0])
+    axs[i].xaxis.set_minor_locator(MultipleLocator(100))
+# plt.xlabel("Detuning - $\\nu_{112}$ [MHz]")
+# plt.ylabel("Velocity [m/s]")
+plt.show()
+
+fig, axs =  plt.subplots(2,len(MOT_capture_data.keys())//2,figsize = [25,10])
+axs = axs.flatten()
+for i, c_data in enumerate(MOT_capture_data.items()):
+    axs[i].plot(MOT_range*hertz_unit/1e6, to_captured(c_data[1]))
+    axs[i].set_title(c_data[0])
+    axs[i].xaxis.set_minor_locator(MultipleLocator(100))
+
+plt.show()
+
+to_be_plotted = None
+
+fig, ax = plt.subplots(1,1, figsize = [10,6])
+
+for i, cap_data in MOT_capture_data.items():
+    if to_be_plotted is None:
+        to_be_plotted = abundance_data[i]*to_captured(cap_data)
+        continue
+    to_be_plotted += abundance_data[i]*to_captured(cap_data)
+
+ax.plot(MOT_range*hertz_unit/1e6, to_be_plotted)
+[plt.text((MOT_range*hertz_unit/1e6)[np.argmax(to_captured(cap_data))], abundance_data[i]*np.max(to_captured(cap_data)),f"Cd$_{{{i}}}$", color="C0") if np.max(to_captured(cap_data)) > 1e-3 else None  for i, cap_data in MOT_capture_data.items()]
+ax.grid()
+ax.xaxis.set_minor_locator(MultipleLocator(100))
+
+#plt.show()
+
+# MOT_capture_data_wo_slower = {}
+
+# for i in isotope_shifts.keys():
+#     print (f"\n{i}:")
+#     MOT_capture_data_wo_slower[i] =  [captureVelocityForEq(dMOT, slower_det, Hamiltonians[i], lasers = MOT_Beams) for dMOT in MOT_range]
+
+# fig, axs =  plt.subplots(2,len(MOT_capture_data.keys())//2,figsize = [25,10])
+# axs = axs.flatten()
+# for i, c_data in enumerate(MOT_capture_data_wo_slower.items()):
+#     axs[i].plot(MOT_range*hertz_unit/1e6, np.array(c_data[1])*velocity_unit)
+#     axs[i].set_title(c_data[0])
+
+# plt.show()
+
 to_be_plotted = None
 
 for i, cap_data in MOT_capture_data.items():
-    if (i in [111,113]):
-        continue
     if to_be_plotted is None:
         to_be_plotted = abundance_data[i]*to_captured(cap_data)
         continue
@@ -14,16 +85,16 @@ ax.plot(MOT_range*hertz_unit/1e6, to_be_plotted, label = "With slower")
 to_be_plotted = None
 
 for i, cap_data in MOT_capture_data_wo_slower.items():
-    if (i in [111,113]):
-        continue
     if to_be_plotted is None:
-        to_be_plotted = abundance_data[i]*capture_cdf(np.array(cap_data))
+        to_be_plotted = abundance_data[i]*to_captured(cap_data)
         continue
-    to_be_plotted += abundance_data[i]*capture_cdf(np.array(cap_data))
+    to_be_plotted += abundance_data[i]*to_captured(cap_data)
 
 ax.plot(MOT_range*hertz_unit/1e6, to_be_plotted, label = "Without slower")
-ax.set_xlabel("MOT detuning - $\\nu_{114}$ [MHz]")
+ax.set_xlabel("MOT detuning - $\\nu_{112}$ [MHz]")
 ax.set_ylabel("MOT signal [a.u.]")
+[ax.text((MOT_range*hertz_unit/1e6)[np.argmax(to_captured(cap_data))], abundance_data[i]*np.max(to_captured(cap_data)),f"Cd$_{{{i}}}$", color="C1") if np.max(to_captured(cap_data)) > 1e-3 else None  for i, cap_data in MOT_capture_data_wo_slower.items()]
+[ax.text((MOT_range*hertz_unit/1e6)[np.argmax(to_captured(cap_data))], abundance_data[i]*np.max(to_captured(cap_data)),f"Cd$_{{{i}}}$", color="C0") if np.max(to_captured(cap_data)) > 1e-3 else None  for i, cap_data in MOT_capture_data.items()]
 ax.legend()
 ax.grid()
 ax.xaxis.set_minor_locator(MultipleLocator(100))
@@ -36,10 +107,10 @@ wo_slower = None
 for (i, cap_data), (j, cap_data_wo_slower) in zip(MOT_capture_data.items(), MOT_capture_data_wo_slower.items()):
     if w_slower is None:
         w_slower = abundance_data[i]*to_captured(cap_data)
-        wo_slower = abundance_data[i]*capture_cdf(np.array(cap_data_wo_slower))
+        wo_slower = abundance_data[i]*to_captured(cap_data)
         continue
     w_slower += abundance_data[i]*to_captured(cap_data)
-    wo_slower += abundance_data[i]*capture_cdf(np.array(cap_data_wo_slower))
+    wo_slower += abundance_data[i]*to_captured(cap_data)
 
 epsilon = 1e-4
     
@@ -47,11 +118,11 @@ to_be_plotted = w_slower + epsilon
 to_be_plotted/=wo_slower + epsilon
 # to_be_plotted[wo_slower<=epsilon] =0
 
-fig, ax = plt.subplots(1,1,figsize=[20,12])
-ax.plot(MOT_range*hertz_unit/1e6, to_be_plotted)
-ax.set_xlabel("MOT detuning - $\\nu_{114}$ [MHz]")
-ax.set_ylabel("Ratio")
-ax.grid()
-ax.xaxis.set_minor_locator(MultipleLocator(100))
+fig, ax2 = plt.subplots(1,1,figsize=[20,12])
+ax2.plot(MOT_range*hertz_unit/1e6, to_be_plotted)
+ax2.set_xlabel("MOT detuning - $\\nu_{112}$ [MHz]")
+ax2.set_ylabel("Ratio")
+ax2.grid()
+ax2.xaxis.set_minor_locator(MultipleLocator(100))
 
 plt.show()

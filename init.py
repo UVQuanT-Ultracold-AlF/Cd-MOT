@@ -65,15 +65,18 @@ velocity_unit = hertz_unit/k
 
 
 # laser parameters from Simon
-slower_beam_width = 0.5 # cm
-slower_I = 0.3 # W/cm^2
+slower_beam_width = 0.5/2 # cm
+slower_I = 0.04 #0.3 # W/cm^2
 slower_detuning = 0 # Placeholder
 MOT_detuning = -1.45*100e6/hertz_unit
-MOT_beam_width = 0.4 # cm
+MOT_beam_width = 0.4/2 # cm
 Isat = 1.1
-slower_s = slower_I/Isat
+slower_s = 2*slower_I/(np.pi*(slower_beam_width**2))/Isat
+# slower_s = 0.2
+# slower_s = 0.4
+# slower_s = 0.3
 # slower_s = 0.02
-MOT_s = 2
+MOT_s = 1.5/Isat
 cm_unit = 1
 
 
@@ -185,24 +188,43 @@ def MOT_Beams_infinite(det_MOT, *args):
         {'kvec':np.array([0., 0., -1.]), 'pol':+1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s},#,'wb':MOT_beam_width}
     ], beam_type=pylcp.infinitePlaneWaveBeam)
 
-permMagnets=mi('./csv/2D_Br.csv', './csv/2D_Bz.csv',91,-1)
+permMagnets=mi('./csv/2D_Br_updated_30mmbore.csv', './csv/2D_Bz_updated_30mmbore.csv',91,-1)
 permMagnetsPylcp = pylcp.magField(permMagnets.fieldCartesian)
+
+def mod_slower_s(new_slower_s):
+    global slower_s
+    slower_s = new_slower_s
 
 # def captured_condition(t, y):
 #     return (y[-6]**2 + y[-3]**2) - 1e-2
 
 def captured_condition(t, y):
-    return sum(map(lambda x : x**2, y[-6:])) - 1e-2
+    if sum(map(lambda x : x**2, y[-3:])) > 1e-4:
+        return -1
+    if sum(map(lambda x : (velocity_unit*x)**2, y[-6:-3])) > 0.1:
+        return -1
+    return 1
+
+def weak_cap_cond(v,p):
+    if sum(map(lambda x : x**2, p)) > 2e-4:
+        return -1
+    if sum(map(lambda x : (velocity_unit*x)**2, v)) > 0.2:
+        return -1
+    return 1
 
 def lost_condition(t, y):
     return y[-3]- 8
 
 def backwards_lost(t, y):
-    return y[-3] + 50
+    if (y[-3] < -10 and y[-6]*velocity_unit < 0):
+        return -1
+    return 1
 
 captured_condition.terminal = True
 lost_condition.terminal = True
 backwards_lost.terminal = True
+
+m_step = 1e-4/time_unit
 
 def captureVelocityForEq(det_MOT, det_slower, ham, lasers = MOT_and_Slow_Beams):
     print (f"{det_MOT*hertz_unit/1e6:.2f} {det_slower*hertz_unit/1e6:.2f}", end = '                                                                            \r')
@@ -214,17 +236,18 @@ def captureVelocityForEq(det_MOT, det_slower, ham, lasers = MOT_and_Slow_Beams):
     return findCaptureVelocity(np.array([-10,0,0]), eq)
 
 def isCaptured(sol):
-    captured = -1
-    finalPosition = np.array([sol.r[i][-1] for i in range(3)])
-    finalVelocity = np.array([sol.v[i][-1] for i in range(3)])  # Fix capture cond
-    if (np.linalg.norm(finalPosition)**2 + np.linalg.norm(finalVelocity)**2 <1.1e-2):
-        #print('initial velocity: '+ str(sol.v[0][0]) +' captured')
-        captured = 1 
-    return captured
+    # captured = -1
+    # finalPosition = np.array([sol.r[i][-1] for i in range(3)])
+    # finalVelocity = 0*np.array([sol.v[i][-1]*velocity_unit for i in range(3)])  # Fix capture cond
+    # if (np.linalg.norm(finalPosition)**2 + np.linalg.norm(finalVelocity)**2 < 1e-2):
+    #     #print('initial velocity: '+ str(sol.v[0][0]) +' captured')
+    #     captured = 1 
+    return weak_cap_cond(sol.v[:,-1],sol.r[:,-1])
+    # return captured
 
-def atomTrajectoryToMOT(v0, r0, eqn, angle = 0, tmax=10, max_step=1):
+def atomTrajectoryToMOT(v0, r0, eqn, angle = 0, tmax=10, max_step=m_step):
     eqn.set_initial_position_and_velocity(r0, np.array([v0*np.cos(angle),v0*np.sin(angle),0]))
-    eqn.evolve_motion([0., 10], events=[captured_condition,lost_condition,backwards_lost],
+    eqn.evolve_motion([0., 25e-3/time_unit], events=[captured_condition,lost_condition,backwards_lost],
                       max_step=max_step)
 
     return isCaptured(eqn.sol)
@@ -243,21 +266,22 @@ def captureVelocityForEq_ranged(det_MOT, det_slower, ham, *args, lasers = MOT_an
     try:
         eq.set_initial_pop(np.array([1., 0., 0., 0.]))
     except ValueError: # Quick and dirty solution to detect the two fermionic hamiltonians
-        eq.set_initial_pop(np.array([0.5, 0.5, 0., 0., 0., 0., 0., 0.]))
+        eq.set_initial_pop(np.array([0.5, 0.5, 0., 0., 0., 0., 0., 0.]))    
     return findCaptureVelocityRange(np.array([-45.5,0,0]), eq, intervals, angle = angle)
 
 def findCaptureVelocityRange(r0, eqn, intervals = [0, 100/velocity_unit, 150/velocity_unit, 300/velocity_unit],angle = 0):
     signs = []
     roots = []
-    signs.append(0 if atomTrajectoryToMOT(intervals[0], r0, eqn, tmax=10, max_step=1) < 1 else 1)
+    signs.append(0 if atomTrajectoryToMOT(intervals[0], r0, eqn, tmax=10, max_step=m_step) < 1 else 1)
     for xlow, xhigh in zip(intervals[:-1], intervals[1:]):
-        xhigh_sign = 0 if atomTrajectoryToMOT(xhigh, r0, eqn, angle = angle, tmax=10, max_step=1) < 1 else 1
+        xhigh_sign = 0 if atomTrajectoryToMOT(xhigh, r0, eqn, angle = angle, tmax=25e-3/time_unit, max_step=m_step) < 1 else 1
         if (signs[-1] == xhigh_sign):
             continue
-        signs.append(xhigh_sign)
+
         roots.append(bisect(atomTrajectoryToMOT,xlow, xhigh,
-                       args=(r0, eqn, angle),
-                       xtol=1/velocity_unit, rtol=1e-3, full_output=False))
+                    args=(r0, eqn, angle),
+                    xtol=1/velocity_unit, rtol=1e-3, full_output=False))
+        signs.append(xhigh_sign)
     if (roots == []):
         return ([0],[0])
     return (roots, signs)
@@ -280,3 +304,23 @@ def convert_to_captured(roots, signs):
 to_captured = lambda arr : np.array([convert_to_captured(*x) for x in arr])
 to_captured_2D = lambda arr : np.array([[convert_to_captured(*x) for x in y] for y in arr]) # Write a more general solution
 to_captured_ND = lambda arr : np.array([convert_to_captured(*x) if isinstance(x, tuple) else to_captured_ND(x) for x in arr])
+
+    
+def get_cap_range(roots, signs):
+    for root_low, root_high, sign in zip(roots[:-1], roots[1:],signs[1:-1]):
+        if sign:
+            return [root_low, root_high]
+    return [0,0]
+    
+to_cap_range = lambda arr : np.array([get_cap_range(*d) for d in arr])
+
+if __name__ == "__main__":
+    #Now if I make the radial and axial plots, they should still look as expected. Along the line y=-x, By =-Bx by symmetry.
+    posns = np.arange(-20.0,20.0,0.02)
+    fig, ax = plt.subplots(1,2,figsize=[10,5])
+    ax[0].plot(posns,np.array([permMagnets.fieldCartesian(np.array([-i,0,0]),0)/(10**(-4)*consts.value('Bohr magneton')/(10**6*91*consts.h)) for i in posns]))
+    ax[1].plot(posns,np.array([permMagnets.fieldCartesian(np.array([0.0,0.0,i]),0)/(10**(-4)*consts.value('Bohr magneton')/(10**6*91*consts.h)) for i in posns]))
+
+    #checking that the pylcp still gets the same field profiles
+    ax[0].plot(posns,np.array([permMagnetsPylcp.Field(np.array([-i,0,0]),0)/(10**(-4)*consts.value('Bohr magneton')/(10**6*91*consts.h)) for i in posns]), 'k--')
+    ax[1].plot(posns,np.array([permMagnetsPylcp.Field(np.array([0.0,0.0,i]),0)/(10**(-4)*consts.value('Bohr magneton')/(10**6*91*consts.h)) for i in posns]), 'k--')
