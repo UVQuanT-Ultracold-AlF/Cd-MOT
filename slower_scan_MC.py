@@ -42,14 +42,14 @@ def init_worker(pgr, t_r, MC_Runs):
 def MC_run(args):
     global progress
     with progress.get_lock():
-        # if progress.value % 100 == 0:
-        print(f"{progress.value}/{total_runtime}: {100*progress.value/total_runtime:.2f}%")
-        progress.value += MC_RUNS
+        progress.value += 1
+        if progress.value % 100 == 0:
+            print(f"{progress.value}/{total_runtime}: {100*progress.value/total_runtime:.2f}%")
     det = args[0]
     beam = args[1]
     # print(f"{det*hertz_unit/1e6:.2f} MHz")
     eq = pylcp.rateeq(beam(-175e6/hertz_unit + isotope_shifts[112], det + isotope_shifts[112]),permMagnetsPylcp,Hamiltonians[112], include_mag_forces=False)
-    return sum([single_run(eq) for _ in range(MC_RUNS)])
+    return single_run(eq)
 
 def plot_slow(data, MC_RUNS=MC_RUNS):
     
@@ -63,16 +63,16 @@ def plot_slow(data, MC_RUNS=MC_RUNS):
     fig.tight_layout()
     plt.show()
 
-params = np.array(np.meshgrid(Slow_range, Beams)).T.reshape([-1,2])
+params = np.array(np.meshgrid(Slow_range, Beams, range(MC_RUNS))).T.reshape([-1,3])
 
 if __name__ == "__main__":
     __spec__ = None
     import multiprocessing as mp
-    total_runtime = len(Slow_range)*len(Beams)*MC_RUNS
+    total_runtime = MC_RUNS*len(Slow_range)*len(Beams)
     progress = mp.Value('i', 0)
 
     with mp.Pool(processes=MC_CORES, initializer=init_worker, initargs=(progress,total_runtime, MC_RUNS)) as pool:
-        data = np.array(pool.map(MC_run, params)).reshape([len(Slow_range), len(Beams)]).T
+        data = np.sum(np.array(pool.map(MC_run, params)).reshape([len(Slow_range), len(Beams), MC_RUNS]), axis = -1).T
     
-    np.savez("./out.npz", data = data, slower = Slow_range, MC_RUNS = MC_RUNS)
+    np.save("./out.npz", data = data, slower = Slow_range, MC_RUNS = MC_RUNS)
     #plot_slow(data)
