@@ -4,7 +4,7 @@ from sys import argv
 MOT_range = np.linspace(-1700e6/hertz_unit, 1700e6/hertz_unit,51)
 slower_range = np.linspace(-1400e6/hertz_unit, 600e6/hertz_unit,51)
 
-time_range = 0.5e-3/time_unit
+time_range = 10e-3/time_unit
 
 def MOT_and_Slow_Beams_timed2(det_MOT, det_slower, *args):
     return pylcp.laserBeams([
@@ -39,9 +39,9 @@ def MOT_and_Slow_Beams_lin_timed(det_MOT, det_slower, *args):
         {'kvec':np.array([-1, 0., 0.]), 'pol':np.array([0., 1., 0.]), 'pol_coord':'cartesian', 'delta':0*slower_detuning + det_slower, 's': lambda t : slower_s if t < time_range else 0,'wb':slower_beam_width}
     ], beam_type=pylcp.gaussianBeam)
 
-beams = [MOT_and_Slow_Beams, MOT_and_Slow_Beams_sig_2, MOT_and_Slow_Beams_lin]
+beams = [MOT_and_Slow_Beams_timed2, MOT_and_Slow_Beams_sig_2_timed, MOT_and_Slow_Beams_lin_timed]
 relevant_isotopes = [112]#,111,113]#, 116, 113]
-powers = [0.4,0.15,0.1,0.05]
+powers = [0.05]
 
 def run_beam(beam):
     ret = {}
