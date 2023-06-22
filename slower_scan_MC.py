@@ -11,7 +11,7 @@ samp_vt = fake_samp(0) #cdf_samp(transverse_cdf, [-transverse_cutoff, transverse
 samp_angle = rej_samp(rand_x = lambda : rand.uniform(0,2*np.pi))
 samp_vel = rej_samp(func = lambda x : x, rand_x = lambda : [next(samp_v0), *((lambda x, a : [x*np.sin(a), x*np.cos(a)])(next(samp_vt), next(samp_angle)))], rand_y = lambda : 0, comp_func = lambda x ,y : abs(np.arctan(np.sqrt(x[1]**2 + x[2]**2)/x[0])) < 75e-3 if abs(x[0]) > 1e-10 else False)
 samp_time = cdf_samp(lambda x : norm.cdf(x, 1e-3/time_unit,0.5e-3/time_unit), [0/time_unit, 2.5/time_unit]) # rej_samp(func = lambda x : norm.pdf(x, 1e-3/time_unit,0.5e-3/time_unit), rand_x = lambda : rand.uniform(0,2.5e-3/time_unit), rand_y = lambda : rand.uniform(0,norm.pdf(1e-3/time_unit, 1e-3/time_unit,0.5e-3/time_unit)))
-samp_pos = rej_samp(func = lambda r : 1 if sum(map(lambda x : x**2, r)) < (2e-1)**2 else 0, rand_x = lambda : (rand.uniform(-2e-1,2e-1),rand.uniform(-2e-1,2e-1)), rand_y = lambda : 0.5)
+samp_pos = fake_samp([0,0]) #rej_samp(func = lambda r : 1 if sum(map(lambda x : x**2, r)) < (2e-1)**2 else 0, rand_x = lambda : (rand.uniform(-2e-1,2e-1),rand.uniform(-2e-1,2e-1)), rand_y = lambda : 0.5)
 
 if __name__ == "__main__":
     MC_RUNS = int(argv[1])
@@ -19,8 +19,8 @@ if __name__ == "__main__":
 else:
     MC_RUNS = 1
     MC_CORES = 1
-# Slow_range = np.linspace(-1400e6/hertz_unit, 600e6/hertz_unit,51)
-Slow_range = np.linspace(-1000e6/hertz_unit, -700e6/hertz_unit,10)
+Slow_range = np.linspace(-1400e6/hertz_unit, 600e6/hertz_unit,21)
+#Slow_range = np.linspace(-1000e6/hertz_unit, -700e6/hertz_unit,10)
 # Slow_range = [-700e6/hertz_unit]
 Beams = [MOT_and_Slow_Beams, MOT_and_Slow_Beams_sig_2, MOT_and_Slow_Beams_lin]
 
@@ -42,14 +42,14 @@ def init_worker(pgr, t_r, MC_Runs):
 def MC_run(args):
     global progress
     with progress.get_lock():
-        progress.value += 1
-        if progress.value % 100 == 0:
-            print(f"{progress.value}/{total_runtime}: {100*progress.value/total_runtime:.2f}%", end = '\r')
+        # if progress.value % 100 == 0:
+        print(f"{progress.value}/{total_runtime}: {100*progress.value/total_runtime:.2f}%")
+        progress.value += MC_RUNS
     det = args[0]
     beam = args[1]
     # print(f"{det*hertz_unit/1e6:.2f} MHz")
     eq = pylcp.rateeq(beam(-175e6/hertz_unit + isotope_shifts[112], det + isotope_shifts[112]),permMagnetsPylcp,Hamiltonians[112], include_mag_forces=False)
-    return single_run(eq)
+    return sum([single_run(eq) for _ in range(MC_RUNS)])
 
 def plot_slow(data, MC_RUNS=MC_RUNS):
     
@@ -63,16 +63,16 @@ def plot_slow(data, MC_RUNS=MC_RUNS):
     fig.tight_layout()
     plt.show()
 
-params = np.array(np.meshgrid(Slow_range, Beams, range(MC_RUNS))).T.reshape([-1,3])
+params = np.array(np.meshgrid(Slow_range, Beams)).T.reshape([-1,2])
 
 if __name__ == "__main__":
     __spec__ = None
     import multiprocessing as mp
-    total_runtime = MC_RUNS*len(Slow_range)*len(Beams)
+    total_runtime = len(Slow_range)*len(Beams)*MC_RUNS
     progress = mp.Value('i', 0)
 
     with mp.Pool(processes=MC_CORES, initializer=init_worker, initargs=(progress,total_runtime, MC_RUNS)) as pool:
-        data = np.sum(np.array(pool.map(MC_run, params)).reshape([len(Slow_range), len(Beams), MC_RUNS]), axis = -1).T
+        data = np.sum(np.array(pool.map(MC_run, params)).reshape([len(Slow_range), len(Beams)]), axis = -1).T
     
     np.save("./out.npz", data = data, slower = Slow_range, MC_RUNS = MC_RUNS)
     #plot_slow(data)
