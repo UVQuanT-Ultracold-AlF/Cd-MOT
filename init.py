@@ -324,7 +324,7 @@ def findCaptureVelocityRange(r0, eqn, intervals = [0, 100/velocity_unit, 150/vel
 from scipy.stats import norm
 
 mean = 150/velocity_unit
-std = 10/velocity_unit
+std = 30/velocity_unit
 
 capture_cdf = lambda x : norm.cdf(x, mean, std)
 capture_pdf = lambda x : norm.pdf(x, mean, std)
