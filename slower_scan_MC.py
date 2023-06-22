@@ -31,7 +31,7 @@ def single_run(eq):
     eq.set_initial_position_and_velocity(np.array([-45.5,pos[0],pos[1]]),vel)
     sol = eq.evolve_motion([0., 25e-3/time_unit], events=[captured_condition,lost_condition,backwards_lost],
                     max_step=m_step)
-    return sol#0 if isCaptured(sol) < 0 else 1/MC_RUNS
+    return 0 if isCaptured(sol) < 0 else 1/MC_RUNS
 
 def init_worker(pgr, t_r, MC_Runs):
     global progress, total_runtime, MC_RUNS
