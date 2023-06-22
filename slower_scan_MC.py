@@ -72,7 +72,7 @@ if __name__ == "__main__":
     progress = mp.Value('i', 0)
 
     with mp.Pool(processes=MC_CORES, initializer=init_worker, initargs=(progress,total_runtime, MC_RUNS)) as pool:
-        data = np.sum(np.array(pool.map(MC_run, params)).reshape([len(Slow_range), len(Beams), MC_RUNS]), axis = -1).T
+        data = np.sum(np.array(pool.map(MC_run, params)).reshape([MC_RUNS, len(Beams), len(Slow_range)]), axis = 0)
     
     np.save("./out.npz", data = data, slower = Slow_range, MC_RUNS = MC_RUNS)
     #plot_slow(data)
