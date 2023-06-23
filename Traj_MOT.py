@@ -20,7 +20,7 @@ pol = np.array([0,1,1j])
 
 Beams = {'-' : MOT_and_Slow_Beams , '+'  : MOT_and_Slow_Beams_sig_2, '0' :  MOT_and_Slow_Beams_lin}
 
-eq = pylcp.rateeq(Beams[argv[4]](float(argv[1])*1e6/hertz_unit + isotope_shifts[112],float(argv[2])*1e6/hertz_unit + isotope_shifts[112]),permMagnetsPylcp, Hamiltonians[int(argv[3])],include_mag_forces=False,)
+eq = pylcp.rateeq(Beams[argv[4]](float(argv[1])*1e6/hertz_unit + isotope_shifts[112],float(argv[2])*1e6/hertz_unit + isotope_shifts[112]),permMagnetsPylcp, Hamiltonians[int(argv[3])],include_mag_forces=False)
 try:
     eq.set_initial_pop(np.array([1,0,0,0]))
 except ValueError:

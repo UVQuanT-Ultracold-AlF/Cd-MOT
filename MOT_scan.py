@@ -28,7 +28,7 @@ intervals = np.linspace(1/velocity_unit,500/velocity_unit,20)
 
 def run_MOT_scan(i):
     print (i, "S")
-    return i, [captureVelocityForEq_ranged(dMOT, slower_det, Hamiltonians[i], lasers = MOT_and_Slow_Beams, intervals = intervals) for dMOT in MOT_range]
+    return i, [captureVelocityForEq_ranged(dMOT, slower_det, Hamiltonians[i], lasers = MOT_and_Slow_Beams_timed2, intervals = intervals) for dMOT in MOT_range]
 def run_MOT_scan_wo_slower(i):
     print (i, "W")
     return i, [captureVelocityForEq_ranged(dMOT, slower_det, Hamiltonians[i], lasers = MOT_Beams, intervals = intervals) for dMOT in MOT_range]

@@ -223,6 +223,41 @@ def MOT_and_Slow_Beams_lin_timed(det_MOT, det_slower, *args):
         {'kvec':np.array([-1, 0., 0.]), 'pol':np.array([0., 1., 0.]), 'pol_coord':'cartesian', 'delta':0*slower_detuning + det_slower, 's': lambda t : slower_s if t < time_range else 0,'wb':slower_beam_width}
     ], beam_type=pylcp.gaussianBeam)
 
+ramp_cutoff = 10e-3/time_unit
+
+def MOT_and_Slow_Beams_timed3(det_MOT, det_slower, *args):
+    return pylcp.laserBeams([
+        {'kvec':np.array([-1/np.sqrt(2), -1/np.sqrt(2), 0.]), 'pol':-1, 'delta':det_MOT, 's':MOT_s,'wb':MOT_beam_width},
+        {'kvec':np.array([1/np.sqrt(2), 1/np.sqrt(2), 0.]), 'pol':-1, 'delta':det_MOT, 's':MOT_s,'wb':MOT_beam_width},
+        {'kvec':np.array([1/np.sqrt(2), -1/np.sqrt(2), 0.]), 'pol':-1, 'delta':det_MOT, 's':MOT_s,'wb':MOT_beam_width},
+        {'kvec':np.array([-1/np.sqrt(2), 1/np.sqrt(2), 0.]), 'pol':-1, 'delta':det_MOT, 's':MOT_s,'wb':MOT_beam_width},
+        {'kvec':np.array([0., 0.,  1.]), 'pol':+1, 'delta':det_MOT, 's':MOT_s,'wb':MOT_beam_width},
+        {'kvec':np.array([0., 0., -1.]), 'pol':+1, 'delta':det_MOT, 's':MOT_s,'wb':MOT_beam_width},
+        {'kvec':np.array([-1, 0., 0.]), 'pol':-1, 'delta':det_slower, 's': lambda t : slower_s*(1 if t > ramp_cutoff else t/ramp_cutoff) if t < time_range else 0,'wb':slower_beam_width}
+    ], beam_type=pylcp.gaussianBeam)
+
+def MOT_and_Slow_Beams_sig_2_timed2(det_MOT, det_slower, *args):
+    return pylcp.laserBeams([
+        {'kvec':np.array([-1/np.sqrt(2), -1/np.sqrt(2), 0.]), 'pol':-1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
+        {'kvec':np.array([1/np.sqrt(2), 1/np.sqrt(2), 0.]), 'pol':-1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
+        {'kvec':np.array([1/np.sqrt(2), -1/np.sqrt(2), 0.]), 'pol':-1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
+        {'kvec':np.array([-1/np.sqrt(2), 1/np.sqrt(2), 0.]), 'pol':-1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
+        {'kvec':np.array([0., 0.,  1.]), 'pol':+1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
+        {'kvec':np.array([0., 0., -1.]), 'pol':+1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
+        {'kvec':np.array([-1, 0., 0.]), 'pol':+1, 'delta':0*slower_detuning + det_slower, 's': lambda t : slower_s*(1 if t > ramp_cutoff else t/ramp_cutoff) if t < time_range else 0,'wb':slower_beam_width}
+    ], beam_type=pylcp.gaussianBeam)
+
+def MOT_and_Slow_Beams_lin_timed2(det_MOT, det_slower, *args):
+    return pylcp.laserBeams([
+        {'kvec':np.array([-1/np.sqrt(2), -1/np.sqrt(2), 0.]), 'pol':-1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
+        {'kvec':np.array([1/np.sqrt(2), 1/np.sqrt(2), 0.]), 'pol':-1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
+        {'kvec':np.array([1/np.sqrt(2), -1/np.sqrt(2), 0.]), 'pol':-1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
+        {'kvec':np.array([-1/np.sqrt(2), 1/np.sqrt(2), 0.]), 'pol':-1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
+        {'kvec':np.array([0., 0.,  1.]), 'pol':+1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
+        {'kvec':np.array([0., 0., -1.]), 'pol':+1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
+        {'kvec':np.array([-1, 0., 0.]), 'pol':np.array([0., 1., 0.]), 'pol_coord':'cartesian', 'delta':0*slower_detuning + det_slower, 's': lambda t : slower_s*(1 if t > ramp_cutoff else t/ramp_cutoff) if t < time_range else 0,'wb':slower_beam_width}
+    ], beam_type=pylcp.gaussianBeam)
+
 permMagnets=mi('./csv/2D_Br_updated_30mmbore.csv', './csv/2D_Bz_updated_30mmbore.csv',91,-1)
 permMagnetsPylcp = pylcp.magField(permMagnets.fieldCartesian)
 
@@ -280,12 +315,11 @@ def isCaptured(sol):
     return weak_cap_cond(sol.v[:,-1],sol.r[:,-1])
     # return captured
 
-def atomTrajectoryToMOT(v0, r0, eqn, angle = 0, tmax=10, max_step=m_step):
+def atomTrajectoryToMOT(v0, r0, eqn, angle = 0, classifier = isCaptured, tmax=10, max_step=m_step):
     eqn.set_initial_position_and_velocity(r0, np.array([v0*np.cos(angle),v0*np.sin(angle),0]))
     eqn.evolve_motion([0., 25e-3/time_unit], events=[captured_condition,lost_condition,backwards_lost],
                       max_step=max_step)
-
-    return isCaptured(eqn.sol)
+    return classifier(eqn.sol)
 
 def findCaptureVelocity(r0,eqn):
     if(atomTrajectoryToMOT(2, r0, eqn, tmax=10, max_step=1)==-1):
@@ -295,14 +329,15 @@ def findCaptureVelocity(r0,eqn):
        xtol=1e-3, rtol=1e-3, full_output=False)
 
 
-def captureVelocityForEq_ranged(det_MOT, det_slower, ham, *args, lasers = MOT_and_Slow_Beams, intervals = [0, 100/velocity_unit, 150/velocity_unit, 300/velocity_unit], angle = 0, **kwargs):
+def captureVelocityForEq_ranged(det_MOT, det_slower, ham, *args, lasers = MOT_and_Slow_Beams, intervals = [0, 100/velocity_unit, 150/velocity_unit, 300/velocity_unit], angle = 0, rateeq_args = {}, **kwargs):
     print (f"{det_MOT*hertz_unit/1e6:.2f} {det_slower*hertz_unit/1e6:.2f}", end = '                                                                            \r')
-    eq = pylcp.rateeq(lasers(det_MOT, det_slower,*args,**kwargs),permMagnetsPylcp, ham,include_mag_forces=False)
+    eq = pylcp.rateeq(lasers(det_MOT, det_slower,*args,**kwargs),permMagnetsPylcp, ham,include_mag_forces=False, **rateeq_args)
     try:
         eq.set_initial_pop(np.array([1., 0., 0., 0.]))
     except ValueError: # Quick and dirty solution to detect the two fermionic hamiltonians
         eq.set_initial_pop(np.array([0.5, 0.5, 0., 0., 0., 0., 0., 0.]))    
-    return findCaptureVelocityRange(np.array([-45.5,0,0]), eq, intervals, angle = angle)
+    # return findCaptureVelocityRange(np.array([-10,0,0]), eq, intervals, angle = angle)
+    return findCaptureVelocityRange_fast(np.array([-10,0,0]), eq, angle = angle)
 
 def findCaptureVelocityRange(r0, eqn, intervals = [0, 100/velocity_unit, 150/velocity_unit, 300/velocity_unit],angle = 0):
     signs = []
@@ -320,6 +355,40 @@ def findCaptureVelocityRange(r0, eqn, intervals = [0, 100/velocity_unit, 150/vel
     if (roots == []):
         return ([0],[0])
     return (roots, signs)
+
+def capture_classifier(sol):
+    if (sol.r[0,-1] > 1):
+        return 1
+    if (isCaptured(sol) > 0):
+        return 0
+    return -1
+
+def findCaptureVelocityRange_fast(r0, eqn, angle = 0):
+    vel_range = [-1/velocity_unit, 1000/velocity_unit]
+    signs = []
+    roots = []
+    # signs.append(0 if atomTrajectoryToMOT(vel_range, r0, eqn, tmax=10, max_step=m_step) != 0 else 1)
+    # for xlow, xhigh in zip(intervals[:-1], intervals[1:]):
+    #     xhigh_sign = 0 if atomTrajectoryToMOT(xhigh, r0, eqn, angle = angle, tmax=25e-3/time_unit, max_step=m_step) < 1 else 1
+    #     if (signs[-1] == xhigh_sign):
+    #         continue
+
+    #     roots.append(bisect(atomTrajectoryToMOT,xlow, xhigh,
+    #                 args=(r0, eqn, angle),
+    #                 xtol=1/velocity_unit, rtol=1e-3, full_output=False))
+    #     signs.append(xhigh_sign)
+        
+    roots.append(bisect(atomTrajectoryToMOT, *vel_range, args=(r0, eqn, angle, lambda sol : capture_classifier(sol) + 0.5), xtol=1/velocity_unit, rtol=1e-3, full_output=False))
+    # vel_range[0] = roots[0] - 10/velocity_unit
+    roots.append(bisect(atomTrajectoryToMOT, *vel_range, args=(r0, eqn, angle, lambda sol : capture_classifier(sol) - 0.5), xtol=1/velocity_unit, rtol=1e-3, full_output=False))
+    if (abs(roots[0] - roots[1]) < 2/velocity_unit):
+        roots = []
+    else:
+        signs = [0,1,0]
+    if (roots == []):
+        return ([0],[0])
+    return (roots, signs)
+
 
 from scipy.stats import norm
 

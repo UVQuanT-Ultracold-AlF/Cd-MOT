@@ -41,7 +41,7 @@ def MOT_and_Slow_Beams_lin_timed(det_MOT, det_slower, *args):
 
 beams = [MOT_and_Slow_Beams_timed2, MOT_and_Slow_Beams_sig_2_timed, MOT_and_Slow_Beams_lin_timed]
 relevant_isotopes = [112]#,111,113]#, 116, 113]
-powers = [0.05]
+powers = [slower_s]
 
 def run_beam(beam):
     ret = {}
