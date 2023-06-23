@@ -20,7 +20,7 @@ else:
     MC_RUNS = 1
     MC_CORES = 1
 # Slow_range = np.linspace(-1400e6/hertz_unit, 600e6/hertz_unit,21)
-Slow_range = np.linspace(-1000e6/hertz_unit, -00e6/hertz_unit,11)
+Slow_range = np.linspace(-1400e6/hertz_unit, 600e6/hertz_unit,51)
 # Slow_range = [-700e6/hertz_unit]
 Beams = [MOT_and_Slow_Beams_timed2, MOT_and_Slow_Beams_sig_2_timed, MOT_and_Slow_Beams_lin_timed]
 
@@ -29,7 +29,7 @@ def single_run(eq):
     vel = next(samp_vel)
     t0 = next(samp_time)
     eq.set_initial_pop(np.array([1,0,0,0]))
-    eq.set_initial_position_and_velocity(np.array([-45.5,pos[0],pos[1]]),vel)
+    eq.set_initial_position_and_velocity(np.array([-10,pos[0],pos[1]]),vel)
     sol = eq.evolve_motion([t0 + 0., t0 + 25e-3/time_unit], events=[captured_condition,lost_condition,backwards_lost],
                     max_step=m_step)
     return 0 if isCaptured(sol) < 0 else 1/MC_RUNS
