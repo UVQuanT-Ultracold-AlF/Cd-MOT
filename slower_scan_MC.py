@@ -29,7 +29,7 @@ def single_run(eq):
     vel = next(samp_vel)
     t0 = next(samp_time)
     eq.set_initial_pop(np.array([1,0,0,0]))
-    eq.set_initial_position_and_velocity(np.array([-10,pos[0],pos[1]]),vel)
+    eq.set_initial_position_and_velocity(np.array([-45.5,pos[0],pos[1]]),vel)
     sol = eq.evolve_motion([t0 + 0., t0 + 25e-3/time_unit], events=[captured_condition,lost_condition,backwards_lost],
                     max_step=m_step)
     return 0 if isCaptured(sol) < 0 else 1/MC_RUNS
