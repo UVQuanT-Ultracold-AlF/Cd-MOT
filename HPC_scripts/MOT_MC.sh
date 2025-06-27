@@ -12,5 +12,5 @@ cp -r $HOME/Cd_MOT_paper/Cd-MOT/* $TMPDIR
 
 cd $TMPDIR
 
-$HOME/anaconda3/bin/python MOT_Scan_MC.py 1000 256
+$HOME/anaconda3/bin/python MOT_Scan_MC.py 5000 256
 cp $TMPDIR/out_MOT.npz $HOME/Cd_MOT_paper/Cd-MOT/out_MOT.npz

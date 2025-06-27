@@ -6,42 +6,10 @@ slower_range = np.linspace(-1400e6/hertz_unit, 600e6/hertz_unit,51)
 
 time_range = 10e-3/time_unit
 
-def MOT_and_Slow_Beams_timed2(det_MOT, det_slower, *args):
-    return pylcp.laserBeams([
-        {'kvec':np.array([-1/np.sqrt(2), -1/np.sqrt(2), 0.]), 'pol':-1, 'delta':det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([1/np.sqrt(2), 1/np.sqrt(2), 0.]), 'pol':-1, 'delta':det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([1/np.sqrt(2), -1/np.sqrt(2), 0.]), 'pol':-1, 'delta':det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([-1/np.sqrt(2), 1/np.sqrt(2), 0.]), 'pol':-1, 'delta':det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([0., 0.,  1.]), 'pol':+1, 'delta':det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([0., 0., -1.]), 'pol':+1, 'delta':det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([-1, 0., 0.]), 'pol':-1, 'delta':det_slower, 's': lambda t : slower_s if t < time_range else 0,'wb':slower_beam_width}
-    ], beam_type=pylcp.gaussianBeam)
-
-def MOT_and_Slow_Beams_sig_2_timed(det_MOT, det_slower, *args):
-    return pylcp.laserBeams([
-        {'kvec':np.array([-1/np.sqrt(2), -1/np.sqrt(2), 0.]), 'pol':-1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([1/np.sqrt(2), 1/np.sqrt(2), 0.]), 'pol':-1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([1/np.sqrt(2), -1/np.sqrt(2), 0.]), 'pol':-1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([-1/np.sqrt(2), 1/np.sqrt(2), 0.]), 'pol':-1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([0., 0.,  1.]), 'pol':+1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([0., 0., -1.]), 'pol':+1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([-1, 0., 0.]), 'pol':+1, 'delta':0*slower_detuning + det_slower, 's': lambda t : slower_s if t < time_range else 0,'wb':slower_beam_width}
-    ], beam_type=pylcp.gaussianBeam)
-
-def MOT_and_Slow_Beams_lin_timed(det_MOT, det_slower, *args):
-    return pylcp.laserBeams([
-        {'kvec':np.array([-1/np.sqrt(2), -1/np.sqrt(2), 0.]), 'pol':-1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([1/np.sqrt(2), 1/np.sqrt(2), 0.]), 'pol':-1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([1/np.sqrt(2), -1/np.sqrt(2), 0.]), 'pol':-1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([-1/np.sqrt(2), 1/np.sqrt(2), 0.]), 'pol':-1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([0., 0.,  1.]), 'pol':+1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([0., 0., -1.]), 'pol':+1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([-1, 0., 0.]), 'pol':np.array([0., 1., 0.]), 'pol_coord':'cartesian', 'delta':0*slower_detuning + det_slower, 's': lambda t : slower_s if t < time_range else 0,'wb':slower_beam_width}
-    ], beam_type=pylcp.gaussianBeam)
-
 beams = [MOT_and_Slow_Beams_timed2, MOT_and_Slow_Beams_sig_2_timed, MOT_and_Slow_Beams_lin_timed]
 relevant_isotopes = [112]#,111,113]#, 116, 113]
 powers = [slower_s]
+MAGNET = permMagnetsPylcp
 
 def run_beam(beam):
     ret = {}
@@ -52,7 +20,7 @@ def run_beam(beam):
         mod_slower_s(p)
         print(f"\n{h} {p}:")
         # ret[h]
-        ret[p] = [captureVelocityForEq_ranged(-175e6/hertz_unit + isotope_shifts[112], dSlower + isotope_shifts[112], Hamiltonians[h],lasers=beam, intervals=np.linspace(1/velocity_unit,500/velocity_unit,50), angle=0) for dSlower in slower_range]
+        ret[p] = [captureVelocityForEq_ranged(-175e6/hertz_unit + isotope_shifts[112], dSlower + isotope_shifts[112], Hamiltonians[h],lasers=beam, intervals=np.linspace(1/velocity_unit,500/velocity_unit,50), angle=0, magnets = MAGNET) for dSlower in slower_range]
     return beam, ret
 def plot_slower(slower_cap_data, mean = 150/velocity_unit, std = 30/velocity_unit, *args, c_cdf = None):
     capture_cdf = lambda x : norm.cdf(x, mean, std) if c_cdf is None else c_cdf

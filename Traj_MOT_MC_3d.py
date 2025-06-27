@@ -32,17 +32,31 @@ def single_run(i = None):
     pos = next(samp_pos)
     vel = next(samp_vel)
     t0 = next(samp_time)
-    eq.set_initial_position_and_velocity(np.array([-45.5,pos[0],pos[1]]),vel)
+    eq.set_initial_position_and_velocity(np.array([-10,pos[0],pos[1]]),vel)
     return eq.evolve_motion([t0, t0 + 25e-3/time_unit], events=[captured_condition,lost_condition,backwards_lost],
                     max_step=m_step)
     
 
 
-sols = [single_run(i) for i in range(num_run)]
+sols = np.array([single_run(i) for i in range(num_run)])
 
 ax = plt.figure().add_subplot(projection='3d')
 
 [ax.plot(*sol.r, color = "green" if isCaptured(sol) > 0 else "black") for sol in sols]
-
+ax.set_xlim3d(*[-50,10])
+ax.set_ylim3d(*[-30,30])
+ax.set_zlim3d(*[-30,30])
 plt.show()
 
+def estimate_solid_angle(sols):
+    sols = sols[[isCaptured(sol) > 0 for sol in sols]]
+    vs = [s.v[:,0] for s in sols]
+    pairs = []
+    for i in vs:
+        for j in vs:
+            pairs.append([i,j])
+    pairs = np.array(pairs)
+    maximum = np.min([np.dot(s1/np.linalg.norm(s1), s2/np.linalg.norm(s2)) for s1,s2 in pairs])
+    print(maximum)
+    angle = np.arcsin(1-maximum)
+    print(4*np.pi*(np.sin(angle/2)**2))

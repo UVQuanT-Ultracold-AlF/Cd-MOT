@@ -1,3 +1,4 @@
+import numbers
 import ipynb
 import numpy as np
 import matplotlib.pyplot as plt
@@ -48,7 +49,8 @@ k = 4369238.4 # m^-1
 hbar = consts.hbar
 h = consts.h
 
-hertz_unit = 91e6
+hertz_unit = 99.7e6
+# hertz_unit = 91e6
 # time_unit = 1/hertz_unit
 time_unit = k*1e-2/hertz_unit # Needed due to the two ways units are measured
 
@@ -60,7 +62,7 @@ scaledMass = 4.87e-3
 scaledMass = 113.9*amu_const*91*(2*np.pi)/(hbar*2*np.pi*k**2)
 # print(scaledMass)
 # amu_unit = 113.90336500/scaledMass
-amu_unit = 1/(amu_const*91*(2*np.pi)/(hbar*2*np.pi*k**2))
+amu_unit = 1/(amu_const*91*(2*np.pi)/(hbar*(2*np.pi*k)**2))
 velocity_unit = hertz_unit/k
 
 
@@ -72,13 +74,16 @@ MOT_detuning = -1.45*100e6/hertz_unit
 MOT_beam_width = 0.4/2 # cm
 Isat = 1.1
 slower_s = 2*slower_I/(np.pi*(slower_beam_width**2))/Isat
-# slower_s = 0.2
-# slower_s = 0.4
 # slower_s = 0.3
-# slower_s = 0.02
-MOT_s = 1.5/Isat
+MOT_s = 1.5/Isat/6
+MOT_s_total = 1.5/Isat
+# MOT_s_total = 2/Isat
+# MOT_s_total = 2.2/Isat
+MOT_s_z = MOT_s_total*0.2/(0.67*2.6 + 0.20*1.5)
+MOT_s_xy = MOT_s_total*0.67/(0.67*2.6 + 0.20*1.5)
 cm_unit = 1
-
+MOT_s_xy = MOT_s
+MOT_s_z = MOT_s
 
 # read in initial vel_dist
 vel_dist_raw_data = np.loadtxt("./csv/ChirpedSlowing_112_initialDistribution.dat")
@@ -122,6 +127,17 @@ for key in mass.keys():
         continue
     Hamiltonians[key] = gen_Boson_Hamiltonian(key)
 
+
+def MOT_Beams_push_beam(det_MOT, det_slower, *args):
+    return pylcp.laserBeams([
+        {'kvec':np.array([-1/np.sqrt(2), -1/np.sqrt(2), 0.]), 'pol':-1, 'delta':det_MOT, 's':MOT_s_xy,'wb':MOT_beam_width},
+        {'kvec':np.array([1/np.sqrt(2), 1/np.sqrt(2), 0.]), 'pol':-1, 'delta':det_MOT, 's':MOT_s_xy,'wb':MOT_beam_width},
+        {'kvec':np.array([1/np.sqrt(2), -1/np.sqrt(2), 0.]), 'pol':-1, 'delta':det_MOT, 's':MOT_s_xy,'wb':MOT_beam_width},
+        {'kvec':np.array([-1/np.sqrt(2), 1/np.sqrt(2), 0.]), 'pol':-1, 'delta':det_MOT, 's':MOT_s_xy,'wb':MOT_beam_width},
+        {'kvec':np.array([0., 0.,  1.]), 'pol':+1, 'delta':det_MOT, 's':MOT_s_z,'wb':MOT_beam_width},
+        {'kvec':np.array([0., 0., -1.]), 'pol':+1, 'delta':det_MOT, 's':MOT_s_z,'wb':MOT_beam_width},
+        {'kvec':np.array([-1, 0., 0.]), 'pol':+1, 'delta':det_slower, 's': args[0]/Isat ,'wb':slower_beam_width}
+    ], beam_type=pylcp.gaussianBeam)
 
 # Laser fields
 def MOT_and_Slow_Beams(det_MOT, det_slower, *args):
@@ -170,12 +186,12 @@ def MOT_and_Slow_Beams_lin(det_MOT, det_slower, *args):
 
 def MOT_Beams(det_MOT, *args):
     return pylcp.laserBeams([
-        {'kvec':np.array([-1/np.sqrt(2), -1/np.sqrt(2), 0.]), 'pol':-1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([1/np.sqrt(2), 1/np.sqrt(2), 0.]), 'pol':-1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([1/np.sqrt(2), -1/np.sqrt(2), 0.]), 'pol':-1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([-1/np.sqrt(2), 1/np.sqrt(2), 0.]), 'pol':-1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([0., 0.,  1.]), 'pol':+1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([0., 0., -1.]), 'pol':+1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width}
+        {'kvec':np.array([-1/np.sqrt(2), -1/np.sqrt(2), 0.]), 'pol':-1, 'delta':det_MOT, 's':MOT_s_xy,'wb':MOT_beam_width},
+        {'kvec':np.array([1/np.sqrt(2), 1/np.sqrt(2), 0.]), 'pol':-1, 'delta':det_MOT, 's':MOT_s_xy,'wb':MOT_beam_width},
+        {'kvec':np.array([1/np.sqrt(2), -1/np.sqrt(2), 0.]), 'pol':-1, 'delta':det_MOT, 's':MOT_s_xy,'wb':MOT_beam_width},
+        {'kvec':np.array([-1/np.sqrt(2), 1/np.sqrt(2), 0.]), 'pol':-1, 'delta':det_MOT, 's':MOT_s_xy,'wb':MOT_beam_width},
+        {'kvec':np.array([0., 0.,  1.]), 'pol':+1, 'delta':det_MOT, 's':MOT_s_z,'wb':MOT_beam_width},
+        {'kvec':np.array([0., 0., -1.]), 'pol':+1, 'delta':det_MOT, 's':MOT_s_z,'wb':MOT_beam_width}
     ], beam_type=pylcp.gaussianBeam)
 
 def MOT_Beams_infinite(det_MOT, *args):
@@ -189,38 +205,44 @@ def MOT_Beams_infinite(det_MOT, *args):
     ], beam_type=pylcp.infinitePlaneWaveBeam)
 
 time_range = 10e-3/time_unit
+angle = 0e-3
+laserzero = np.array([20,0,0])
+
 
 def MOT_and_Slow_Beams_timed2(det_MOT, det_slower, *args):
     return pylcp.laserBeams([
-        {'kvec':np.array([-1/np.sqrt(2), -1/np.sqrt(2), 0.]), 'pol':-1, 'delta':det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([1/np.sqrt(2), 1/np.sqrt(2), 0.]), 'pol':-1, 'delta':det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([1/np.sqrt(2), -1/np.sqrt(2), 0.]), 'pol':-1, 'delta':det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([-1/np.sqrt(2), 1/np.sqrt(2), 0.]), 'pol':-1, 'delta':det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([0., 0.,  1.]), 'pol':+1, 'delta':det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([0., 0., -1.]), 'pol':+1, 'delta':det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([-1, 0., 0.]), 'pol':-1, 'delta':det_slower, 's': lambda t : slower_s if t < time_range else 0,'wb':slower_beam_width}
+        {'kvec':np.array([-1/np.sqrt(2), -1/np.sqrt(2), 0.]), 'pol':-1, 'delta':det_MOT, 's':MOT_s_xy,'wb':MOT_beam_width},
+        {'kvec':np.array([1/np.sqrt(2), 1/np.sqrt(2), 0.]), 'pol':-1, 'delta':det_MOT, 's':MOT_s_xy,'wb':MOT_beam_width},
+        {'kvec':np.array([1/np.sqrt(2), -1/np.sqrt(2), 0.]), 'pol':-1, 'delta':det_MOT, 's':MOT_s_xy,'wb':MOT_beam_width},
+        {'kvec':np.array([-1/np.sqrt(2), 1/np.sqrt(2), 0.]), 'pol':-1, 'delta':det_MOT, 's':MOT_s_xy,'wb':MOT_beam_width},
+        {'kvec':np.array([0., 0.,  1.]), 'pol':+1, 'delta':det_MOT, 's':MOT_s_z,'wb':MOT_beam_width},
+        {'kvec':np.array([0., 0., -1.]), 'pol':+1, 'delta':det_MOT, 's':MOT_s_z,'wb':MOT_beam_width},
+        {'kvec':np.array([-np.cos(angle), np.sin(angle), 0.]), 'pol':-1, 'delta':det_slower, 's': lambda t : slower_s if t < time_range else 0,'wb':slower_beam_width, 'pos' : laserzero}
+        # {'kvec':np.array([-1, 0., 0.]), 'pol':-1, 'delta':det_slower, 's': lambda t : slower_s if t < time_range else 0,'wb':slower_beam_width}
     ], beam_type=pylcp.gaussianBeam)
 
 def MOT_and_Slow_Beams_sig_2_timed(det_MOT, det_slower, *args):
     return pylcp.laserBeams([
-        {'kvec':np.array([-1/np.sqrt(2), -1/np.sqrt(2), 0.]), 'pol':-1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([1/np.sqrt(2), 1/np.sqrt(2), 0.]), 'pol':-1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([1/np.sqrt(2), -1/np.sqrt(2), 0.]), 'pol':-1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([-1/np.sqrt(2), 1/np.sqrt(2), 0.]), 'pol':-1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([0., 0.,  1.]), 'pol':+1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([0., 0., -1.]), 'pol':+1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([-1, 0., 0.]), 'pol':+1, 'delta':0*slower_detuning + det_slower, 's': lambda t : slower_s if t < time_range else 0,'wb':slower_beam_width}
+        {'kvec':np.array([-1/np.sqrt(2), -1/np.sqrt(2), 0.]), 'pol':-1, 'delta':det_MOT, 's':MOT_s_xy,'wb':MOT_beam_width},
+        {'kvec':np.array([1/np.sqrt(2), 1/np.sqrt(2), 0.]), 'pol':-1, 'delta':det_MOT, 's':MOT_s_xy,'wb':MOT_beam_width},
+        {'kvec':np.array([1/np.sqrt(2), -1/np.sqrt(2), 0.]), 'pol':-1, 'delta':det_MOT, 's':MOT_s_xy,'wb':MOT_beam_width},
+        {'kvec':np.array([-1/np.sqrt(2), 1/np.sqrt(2), 0.]), 'pol':-1, 'delta':det_MOT, 's':MOT_s_xy,'wb':MOT_beam_width},
+        {'kvec':np.array([0., 0.,  1.]), 'pol':+1, 'delta':det_MOT, 's':MOT_s_z,'wb':MOT_beam_width},
+        {'kvec':np.array([0., 0., -1.]), 'pol':+1, 'delta':det_MOT, 's':MOT_s_z,'wb':MOT_beam_width},
+        {'kvec':np.array([-np.cos(angle), np.sin(angle), 0.]), 'pol':+1, 'delta':det_slower, 's': lambda t : slower_s if t < time_range else 0,'wb':slower_beam_width, 'pos' : laserzero}
+        # {'kvec':np.array([-1, 0., 0.]), 'pol':+1, 'delta':0*slower_detuning + det_slower, 's': lambda t : slower_s if t < time_range else 0,'wb':slower_beam_width}
     ], beam_type=pylcp.gaussianBeam)
 
 def MOT_and_Slow_Beams_lin_timed(det_MOT, det_slower, *args):
     return pylcp.laserBeams([
-        {'kvec':np.array([-1/np.sqrt(2), -1/np.sqrt(2), 0.]), 'pol':-1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([1/np.sqrt(2), 1/np.sqrt(2), 0.]), 'pol':-1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([1/np.sqrt(2), -1/np.sqrt(2), 0.]), 'pol':-1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([-1/np.sqrt(2), 1/np.sqrt(2), 0.]), 'pol':-1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([0., 0.,  1.]), 'pol':+1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([0., 0., -1.]), 'pol':+1, 'delta':0*MOT_detuning + det_MOT, 's':MOT_s,'wb':MOT_beam_width},
-        {'kvec':np.array([-1, 0., 0.]), 'pol':np.array([0., 1., 0.]), 'pol_coord':'cartesian', 'delta':0*slower_detuning + det_slower, 's': lambda t : slower_s if t < time_range else 0,'wb':slower_beam_width}
+        {'kvec':np.array([-1/np.sqrt(2), -1/np.sqrt(2), 0.]), 'pol':-1, 'delta':det_MOT, 's':MOT_s_xy,'wb':MOT_beam_width},
+        {'kvec':np.array([1/np.sqrt(2), 1/np.sqrt(2), 0.]), 'pol':-1, 'delta':det_MOT, 's':MOT_s_xy,'wb':MOT_beam_width},
+        {'kvec':np.array([1/np.sqrt(2), -1/np.sqrt(2), 0.]), 'pol':-1, 'delta':det_MOT, 's':MOT_s_xy,'wb':MOT_beam_width},
+        {'kvec':np.array([-1/np.sqrt(2), 1/np.sqrt(2), 0.]), 'pol':-1, 'delta':det_MOT, 's':MOT_s_xy,'wb':MOT_beam_width},
+        {'kvec':np.array([0., 0.,  1.]), 'pol':+1, 'delta':det_MOT, 's':MOT_s_z,'wb':MOT_beam_width},
+        {'kvec':np.array([0., 0., -1.]), 'pol':+1, 'delta':det_MOT, 's':MOT_s_z,'wb':MOT_beam_width},
+        {'kvec':np.array([-np.cos(angle), np.sin(angle), 0.]), 'pol':np.array([0., 0., 1.]), 'pol_coord':'cartesian', 'delta':0*slower_detuning + det_slower, 's': lambda t : slower_s if t < time_range else 0,'wb':slower_beam_width, 'pos' : laserzero}
+        # {'kvec':np.array([-1, 0., 0.]), 'pol':np.array([0., 1., 0.]), 'pol_coord':'cartesian', 'delta':0*slower_detuning + det_slower, 's': lambda t : slower_s if t < time_range else 0,'wb':slower_beam_width}
     ], beam_type=pylcp.gaussianBeam)
 
 ramp_cutoff = 10e-3/time_unit
@@ -258,8 +280,10 @@ def MOT_and_Slow_Beams_lin_timed2(det_MOT, det_slower, *args):
         {'kvec':np.array([-1, 0., 0.]), 'pol':np.array([0., 1., 0.]), 'pol_coord':'cartesian', 'delta':0*slower_detuning + det_slower, 's': lambda t : slower_s*(1 if t > ramp_cutoff else t/ramp_cutoff) if t < time_range else 0,'wb':slower_beam_width}
     ], beam_type=pylcp.gaussianBeam)
 
-permMagnets=mi('./csv/2D_Br_updated_30mmbore.csv', './csv/2D_Bz_updated_30mmbore.csv',91,-1)
+permMagnets=mi('./csv/2D_Br_updated_30mmbore.csv', './csv/2D_Bz_updated_30mmbore.csv',hertz_unit/1e6,-1)
+permMagnetsStrong=mi('./csv/2D_Br.csv', './csv/2D_Bz.csv',hertz_unit/1e6,-1)
 permMagnetsPylcp = pylcp.magField(permMagnets.fieldCartesian)
+permMagnetsPylcpStrong = pylcp.magField(permMagnetsStrong.fieldCartesian)
 
 def mod_slower_s(new_slower_s):
     global slower_s
@@ -316,7 +340,10 @@ def isCaptured(sol):
     # return captured
 
 def atomTrajectoryToMOT(v0, r0, eqn, angle = 0, classifier = isCaptured, tmax=10, max_step=m_step):
-    eqn.set_initial_position_and_velocity(r0, np.array([v0*np.cos(angle),v0*np.sin(angle),0]))
+    if (isinstance(angle, numbers.Number)):
+        eqn.set_initial_position_and_velocity(r0, np.array([v0*np.cos(angle),v0*np.sin(angle),0]))
+    else:
+        eqn.set_initial_position_and_velocity(r0, np.array([v0*np.cos(angle[0]),v0*np.sin(angle[0])*np.cos(angle[1]),v0*np.sin(angle[0])*np.sin(angle[1])]))
     eqn.evolve_motion([0., 25e-3/time_unit], events=[captured_condition,lost_condition,backwards_lost],
                       max_step=max_step)
     return classifier(eqn.sol)
@@ -328,16 +355,17 @@ def findCaptureVelocity(r0,eqn):
        args=(r0, eqn),
        xtol=1e-3, rtol=1e-3, full_output=False)
 
+startpos = np.array([-45.5,0,0])
 
-def captureVelocityForEq_ranged(det_MOT, det_slower, ham, *args, lasers = MOT_and_Slow_Beams, intervals = [0, 100/velocity_unit, 150/velocity_unit, 300/velocity_unit], angle = 0, rateeq_args = {}, **kwargs):
+def captureVelocityForEq_ranged(det_MOT, det_slower, ham, *args, lasers = MOT_and_Slow_Beams, intervals = [0, 100/velocity_unit, 150/velocity_unit, 300/velocity_unit], angle = 0, rateeq_args = {}, magnets = permMagnetsPylcp, **kwargs):
     print (f"{det_MOT*hertz_unit/1e6:.2f} {det_slower*hertz_unit/1e6:.2f}", end = '                                                                            \r')
-    eq = pylcp.rateeq(lasers(det_MOT, det_slower,*args,**kwargs),permMagnetsPylcp, ham,include_mag_forces=False, **rateeq_args)
+    eq = pylcp.rateeq(lasers(det_MOT, det_slower,*args,**kwargs),magnets, ham,include_mag_forces=False, **rateeq_args)
     try:
         eq.set_initial_pop(np.array([1., 0., 0., 0.]))
     except ValueError: # Quick and dirty solution to detect the two fermionic hamiltonians
-        eq.set_initial_pop(np.array([0.5, 0.5, 0., 0., 0., 0., 0., 0.]))    
+        eq.set_initial_pop(np.array([0.5, 0.5, 0., 0., 0., 0., 0., 0.]))
     # return findCaptureVelocityRange(np.array([-10,0,0]), eq, intervals, angle = angle)
-    return findCaptureVelocityRange_fast(np.array([-10,0,0]), eq, angle = angle)
+    return findCaptureVelocityRange_fast(startpos, eq, angle = angle)
 
 def findCaptureVelocityRange(r0, eqn, intervals = [0, 100/velocity_unit, 150/velocity_unit, 300/velocity_unit],angle = 0):
     signs = []

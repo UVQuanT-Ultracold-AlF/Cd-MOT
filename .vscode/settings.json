@@ -1,0 +1,9 @@
+{
+    "files.associations": {
+        "ostream": "cpp",
+        "vector": "cpp",
+        "type_traits": "cpp",
+        "xutility": "cpp"
+    },
+    "notebook.output.textLineLimit": 250
+}

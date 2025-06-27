@@ -1,0 +1,5 @@
+pylcp.egg-info/PKG-INFO
+pylcp.egg-info/SOURCES.txt
+pylcp.egg-info/dependency_links.txt
+pylcp.egg-info/requires.txt
+pylcp.egg-info/top_level.txt

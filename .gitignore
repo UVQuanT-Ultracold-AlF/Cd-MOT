@@ -4,3 +4,12 @@ __pycache__
 out.npy
 out.npz
 out_MOT.npz
+*.dat
+*.csv
+*.sh.*
+*.dump
+*.npz
+*.npy
+Figures/*
+*.gif
+pylcp_14NH
