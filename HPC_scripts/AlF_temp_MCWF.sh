@@ -13,4 +13,4 @@ cp $HOME/Cd_MOT_paper/Cd-MOT/AlF_temp_MCWF.py $TMPDIR
 cd $TMPDIR
 
 $HOME/anaconda3/bin/python AlF_temp_MCWF.py
-cp $TMPDIR/out2.npz $HOME/Cd_MOT_paper/Cd-MOT/out_AlF_temp_10ms_2photon_6G_25-06-19.npz
+cp $TMPDIR/out2.npz $HOME/Cd_MOT_paper/Cd-MOT/out_AlF_temp_10ms_2photon_-4G_25-06-19.npz
